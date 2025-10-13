@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 pydantic
-request
+requests
 torch
 transformers
 typing

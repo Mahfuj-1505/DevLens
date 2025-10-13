@@ -127,7 +127,7 @@ const ChatBox = () => {
                 <img src={Bot} alt="Bot" className="bot-icon" />
               </div>
               <h2>How can I help you today?</h2>
-              <p>Start a conversation with Llama 3.2</p>
+              <p>Start a conversation with Jarvis 3.6</p>
             </div>
           </div>
         ) : (
@@ -242,7 +242,7 @@ const ChatBox = () => {
                     handleSubmit(e);
                   }
                 }}
-                placeholder="Message Llama 3.2..."
+                placeholder="Message Jarvis 3.6..."
                 className="chat-textarea"
                 rows="1"
               />
