@@ -3,7 +3,7 @@ import { User } from "lucide-react"; // Keep only User icon
 import "./ChatBox.css";
 
 // Import your bot image
-import Bot from "/home/mahfuj/PycharmProjects/FastAPIProject/frontend/src/assets/bot-logo.png";
+import Bot from "../assets/bot-logo.png";
 // OR better relative path (if ChatBox.jsx is in src/components/):
 // import Bot from "../assets/bot-logo.png";
 
