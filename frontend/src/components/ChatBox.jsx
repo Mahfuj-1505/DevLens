@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User } from "lucide-react"; // Keep only User icon
+import { User , Bot } from "lucide-react"; // Keep only User icon
 import "./ChatBox.css";
-
+import  {api} from '../api.js'
 // Import your bot image
-import Bot from "/assets/bot-logo.png";
+// import Bot from "/assets/bot-logo.png";
 // OR better relative path (if ChatBox.jsx is in src/components/):
 // import Bot from "../assets/bot-logo.png";
 
@@ -61,7 +61,7 @@ const ChatBox = () => {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/chat", {
+      const res = await fetch(`${api.baseURL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
