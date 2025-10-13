@@ -41,6 +41,8 @@ def root():
 
 # ---------- Run Server ----------
 if __name__ == "__main__":
-    print("🚀 Backend running with integrated model: http://127.0.0.1:8000")
-    print("💬 Try sending POST /chat with {'message': 'hello'}")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)  # remove reload=True
+
