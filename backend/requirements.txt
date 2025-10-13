@@ -4,8 +4,6 @@ pydantic
 requests
 torch
 transformers
-typing
 tensorflow
 numpy
 pillow
-random
