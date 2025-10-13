@@ -1,29 +1,12 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import uvicorn
+# ---------- model_server.py ----------
 import random
+from datetime import datetime
 
-app = FastAPI(title="Simple Rule-Based Chatbot")
-
-# Add CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class ChatRequest(BaseModel):
-    message: str
-
-# Bot's personality
 BOT_NAME = "Jarvis 3.6"
 USER_NAME = "Mahfuj"
 
 def get_response(message: str) -> str:
-    """Simple rule-based responses"""
+    """Simple rule-based chatbot logic"""
     msg = message.lower().strip()
 
     # Greetings
@@ -81,7 +64,6 @@ def get_response(message: str) -> str:
 
     # Time/Date
     elif any(word in msg for word in ["time", "date", "day"]):
-        from datetime import datetime
         now = datetime.now()
         return f"The current date and time is: {now.strftime('%B %d, %Y at %I:%M %p')}"
 
@@ -105,21 +87,3 @@ def get_response(message: str) -> str:
             f"I'm {BOT_NAME}, and I'm here to help! Try asking me about my name, how I'm doing, or tell me a joke!"
         ]
         return random.choice(default_responses)
-
-@app.post("/chat")
-def chat(req: ChatRequest):
-    """Chat endpoint"""
-    try:
-        response = get_response(req.message)
-        return {"response": response}
-    except Exception as e:
-        return {"response": f"Oops! Something went wrong: {str(e)}"}
-
-@app.get("/")
-def root():
-    return {"message": "Model Server is running!"}
-
-if __name__ == "__main__":
-    print(f"🚀 {BOT_NAME} Model Server running on http://127.0.0.1:8001")
-    print("💬 Try saying: hi, what's your name, tell me a joke")
-    uvicorn.run("model_server:app", host="0.0.0.0", port=8001, reload=True)

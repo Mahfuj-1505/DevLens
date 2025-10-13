@@ -1,46 +1,46 @@
+# ---------- main.py ----------
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from model_server import get_response  # <-- Import model logic
 
 # ---------- FastAPI App ----------
-app = FastAPI()
+app = FastAPI(title="Chatbot Backend with Integrated Model")
 
 # ---------- CORS (allow frontend) ----------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=["*"],  # Allow all origins for frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ---------- Chat with Model Server ----------
+# ---------- Request Schema ----------
 class ChatRequest(BaseModel):
     message: str
 
 
+# ---------- Chat Endpoint ----------
 @app.post("/chat")
 def chat(req: ChatRequest):
-    import requests
-
-    url = "http://127.0.0.1:8001/chat"  # Changed to /chat endpoint and port 8001
-    payload = {"message": req.message}
+    """Handles chat requests from frontend"""
     try:
-        response = requests.post(url, json=payload, timeout=60)
-        data = response.json()
-        return {"response": data.get("response", "")}
+        response = get_response(req.message)
+        return {"response": response}
     except Exception as e:
-        return {"error": "Model server not available", "details": str(e)}
+        return {"error": f"Model error: {str(e)}"}
 
 
 @app.get("/")
 def root():
-    return {"message": "Backend API is running!"}
+    return {"message": "Backend API with integrated AI model is running!"}
 
 
 # ---------- Run Server ----------
 if __name__ == "__main__":
-    print("🚀 Backend API running on http://127.0.0.1:8000")
+    print("🚀 Backend running with integrated model: http://127.0.0.1:8000")
+    print("💬 Try sending POST /chat with {'message': 'hello'}")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
