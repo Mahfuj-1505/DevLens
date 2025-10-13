@@ -1,12 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { User , Bot } from "lucide-react"; // Keep only User icon
+import { User, Bot } from "lucide-react";
 import "./ChatBox.css";
-import  {api} from '../api.js'
-// Import your bot image
-// import Bot from "/assets/bot-logo.png";
-// OR better relative path (if ChatBox.jsx is in src/components/):
-// import Bot from "../assets/bot-logo.png";
-
+import { api } from "../api.js";
 
 const ChatBox = () => {
   const [messages, setMessages] = useState([]);
@@ -53,12 +48,8 @@ const ChatBox = () => {
     setInput("");
     setIsLoading(true);
 
-    // Keep focus on textarea
-    setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 0);
+    setTimeout(() => textareaRef.current?.focus(), 0);
 
-    // Simulate delay
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     try {
@@ -72,13 +63,11 @@ const ChatBox = () => {
       const responseText = data.response || data.error || "No response";
 
       setIsLoading(false);
-
       await typeText(responseText);
 
       const aiMessage = { role: "assistant", text: responseText };
       setMessages((prev) => [...prev, aiMessage]);
       setStreamingText("");
-
       setTimeout(() => textareaRef.current?.focus(), 100);
     } catch (err) {
       console.error("Error chatting:", err);
@@ -87,12 +76,8 @@ const ChatBox = () => {
       const errorText = "[Error connecting to AI]";
       await typeText(errorText);
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", text: errorText },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", text: errorText }]);
       setStreamingText("");
-
       setTimeout(() => textareaRef.current?.focus(), 100);
     }
   };
@@ -112,8 +97,7 @@ const ChatBox = () => {
       <div className="top-header">
         <div className="top-header-content">
           <div className="model-icon">
-            <img src={Bot} alt="Bot" className="avatar-icon" style={{ width: "50px", height: "50px", borderRadius: "50%" }} />
-
+            <Bot className="avatar-icon" size={50} />
           </div>
           <h2 className="model-name">Jarvis 3.6</h2>
         </div>
@@ -125,7 +109,7 @@ const ChatBox = () => {
           <div className="empty-state">
             <div className="empty-state-content">
               <div className="empty-state-icon">
-                <img src={Bot} alt="Bot" className="bot-icon" />
+                <Bot className="bot-icon" size={60} />
               </div>
               <h2>How can I help you today?</h2>
               <p>Start a conversation with Jarvis 3.6</p>
@@ -137,9 +121,7 @@ const ChatBox = () => {
               <div
                 key={i}
                 className={`message-row ${
-                  msg.role === "user"
-                    ? "message-row-user"
-                    : "message-row-ai"
+                  msg.role === "user" ? "message-row-user" : "message-row-ai"
                 }`}
               >
                 <div
@@ -158,7 +140,7 @@ const ChatBox = () => {
                     {msg.role === "user" ? (
                       <User className="avatar-icon" />
                     ) : (
-                      <img src={Bot} alt="Bot" className="avatar-icon" />
+                      <Bot className="avatar-icon" />
                     )}
                   </div>
 
@@ -189,7 +171,7 @@ const ChatBox = () => {
               <div className="message-row message-row-ai">
                 <div className="message-content message-content-ai">
                   <div className="avatar avatar-ai">
-                    <img src={Bot} alt="Bot" className="avatar-icon" />
+                    <Bot className="avatar-icon" />
                   </div>
                   <div className="message-text-wrapper message-text-left">
                     <div className="message-bubble message-bubble-ai">
@@ -209,7 +191,7 @@ const ChatBox = () => {
               <div className="message-row message-row-ai">
                 <div className="message-content message-content-ai">
                   <div className="avatar avatar-ai">
-                    <img src={Bot} alt="Bot" className="avatar-icon" />
+                    <Bot className="avatar-icon" />
                   </div>
                   <div className="message-text-wrapper message-text-left">
                     <div className="message-bubble message-bubble-ai">
