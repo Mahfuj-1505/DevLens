@@ -213,9 +213,11 @@
 }
 
 .avatar-icon {
-    width: 20px;
-    height: 20px;
+    width: 50px;
+    height: 50px;
     color: white;
+    margin-bottom: 10px;
+    margin-left: 5px;
 }
 
 /* Message Text */
@@ -410,3 +412,98 @@
 .messages-container::-webkit-scrollbar-thumb:hover {
     background: rgba(139, 92, 246, 0.5);
 }
+
+
+/* 📱 Responsive adjustments for mobile screens */
+@media (max-width: 768px) {
+    .chat-container {
+        height: 100dvh; /* dynamic viewport height handles keyboard better */
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .messages-container {
+        padding: 8px;
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* smooth scroll for iOS */
+    }
+
+    .messages-wrapper {
+        padding: 8px;
+    }
+
+    .message-row {
+        padding: 12px 0;
+    }
+
+    .message-bubble {
+        padding: 10px 12px;
+        border-radius: 14px;
+        font-size: 15px;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .avatar-icon {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 100px;
+    }
+
+    .input-container {
+        padding: 10px;
+        position: sticky;
+        bottom: 0;
+        background: rgba(17, 24, 39, 0.9);
+        backdrop-filter: blur(8px);
+        border-top: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .input-flex {
+        gap: 8px;
+    }
+
+    .chat-textarea {
+        font-size: 15px;
+        padding: 10px 14px;
+        min-height: 44px;
+        max-height: 120px;
+    }
+
+    .send-button {
+        height: 44px;
+        padding: 10px;
+        border-radius: 10px;
+    }
+
+    .send-icon {
+        width: 18px;
+        height: 18px;
+    }
+
+    .top-header {
+        padding: 8px 0;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .model-icon {
+        margin-left: 0;
+        margin-bottom: 4px;
+    }
+
+    .model-name {
+        font-size: 25px;
+    }
+
+    /* prevent scroll bounce */
+    html, body {
+        overscroll-behavior: none;
+    }
+}
+
