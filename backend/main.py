@@ -12,7 +12,7 @@ app = FastAPI(title="Chatbot Backend with Integrated Model")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://fast-api-project-z5bx.vercel.app",  # your frontend on Vercel
+        "https://fast-api-project-z5bx.vercel.app/",  # your frontend on Vercel
         "http://localhost:3000",                     # optional: for local dev
     ],
     allow_credentials=True,
