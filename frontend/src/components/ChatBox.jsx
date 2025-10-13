@@ -7,6 +7,7 @@ import  {api} from '../api.js'
 // OR better relative path (if ChatBox.jsx is in src/components/):
 // import Bot from "../assets/bot-logo.png";
 
+
 const ChatBox = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
