@@ -3,7 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from model_server import get_response  # <-- Import model logic
+from gemini_server import get_response  # <-- Import model logic
 
 # ---------- FastAPI App ----------
 app = FastAPI(title="Chatbot Backend with Integrated Model")

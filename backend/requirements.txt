@@ -7,3 +7,4 @@ transformers
 tensorflow
 numpy
 pillow
+google-generativeai

@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 
 BOT_NAME = "Jarvis 3.6"
-USER_NAME = "Mahfuj"
+USER_NAME = "User"
 
 def get_response(message: str) -> str:
     """Simple rule-based chatbot logic"""
