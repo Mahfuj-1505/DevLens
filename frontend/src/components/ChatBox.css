@@ -1,15 +1,12 @@
 /* Chat Container */
 .chat-container {
+    /* Make chat container layout-friendly when used inside app (not full-screen) */
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
     background-color: #111827;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: relative;
     overflow: hidden;
     margin: 0;
     padding: 0;

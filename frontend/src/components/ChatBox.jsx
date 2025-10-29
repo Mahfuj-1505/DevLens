@@ -2,6 +2,7 @@ import React, {useState, useRef, useEffect} from "react";
 import {User, Bot} from "lucide-react";
 import "./ChatBox.css";
 import {api} from "../api.js";
+import ReactMarkdown from "react-markdown";
 
 const ChatBox = () => {
     const [messages, setMessages] = useState([]);
@@ -10,28 +11,51 @@ const ChatBox = () => {
     const [streamingText, setStreamingText] = useState("");
     const [isStreaming, setIsStreaming] = useState(false);
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
     const textareaRef = useRef(null);
+    const controllerRef = useRef(null);
+    const streamingCancelledRef = useRef(false);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
+        // scroll the messages container only (do not scroll the whole page)
+        const container = messagesContainerRef.current;
+        if (container) {
+            try {
+                container.scrollTo({top: container.scrollHeight, behavior: 'smooth'});
+            } catch (e) {
+                container.scrollTop = container.scrollHeight;
+            }
+        } else {
+            messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
+        }
     };
 
     useEffect(() => {
         scrollToBottom();
         const handleResize = () => {
-            messagesEndRef.current?.scrollIntoView({behavior: "smooth"});
+            const container = messagesContainerRef.current;
+            if (container) container.scrollTop = container.scrollHeight;
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, [messages, streamingText]);
 
-    const typeText = (text, delay = 30) => {
+    const typeText = (text, delay = 10) => {
         return new Promise((resolve) => {
             setIsStreaming(true);
+            streamingCancelledRef.current = false;
             setStreamingText("");
             let index = 0;
 
             const interval = setInterval(() => {
+                // stop if aborted
+                if (streamingCancelledRef.current || (controllerRef.current && controllerRef.current.signal && controllerRef.current.signal.aborted)) {
+                    clearInterval(interval);
+                    setIsStreaming(false);
+                    resolve('aborted');
+                    return;
+                }
+
                 if (index < text.length) {
                     setStreamingText(text.substring(0, index + 1));
                     index++;
@@ -45,47 +69,97 @@ const ChatBox = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         if (!input.trim() || isLoading || isStreaming) return;
 
-        const userMessage = {role: "user", text: input};
+        const messageToSend = input;
+        const userMessage = {role: "user", text: messageToSend};
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         setIsLoading(true);
 
         setTimeout(() => textareaRef.current?.focus(), 0);
 
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // create abort controller
+        const controller = new AbortController();
+        controllerRef.current = controller;
 
         try {
-            const res = await fetch(`${api.baseURL}/chat`, {
+            const backendBaseURL =
+                window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+                    ? api.baseURL
+                    : `http://${window.location.hostname}:8000`;
+            const res = await fetch(`${backendBaseURL}/chat`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({message: input}),
+                body: JSON.stringify({message: messageToSend}),
+                signal: controller.signal,
             });
 
             const data = await res.json();
             const responseText = data.response || data.error || "No response";
 
             setIsLoading(false);
-            await typeText(responseText);
+            const result = await typeText(responseText);
 
-            const aiMessage = {role: "assistant", text: responseText};
-            setMessages((prev) => [...prev, aiMessage]);
-            setStreamingText("");
-            setTimeout(() => textareaRef.current?.focus(), 100);
+            if (result === 'aborted') {
+                setStreamingText("");
+                setMessages((prev) => [...prev, {role: 'assistant', text: '[Stopped]'}]);
+            } else {
+                const aiMessage = {role: "assistant", text: responseText};
+                setMessages((prev) => [...prev, aiMessage]);
+                setStreamingText("");
+            }
         } catch (err) {
-            console.error("Error chatting:", err);
+            if (err && err.name === 'AbortError') {
+                setIsLoading(false);
+                streamingCancelledRef.current = true;
+                setStreamingText("");
+                setMessages((prev) => [...prev, {role: 'assistant', text: '[Stopped]'}]);
+            } else {
+                console.error("Error chatting:", err);
+                setIsLoading(false);
+                await typeText("[Error connecting to AI]");
+                setMessages((prev) => [...prev, {role: "assistant", text: "[Error connecting to AI]"}]);
+                setStreamingText("");
+            }
+        } finally {
+            controllerRef.current = null;
             setIsLoading(false);
-
-            const errorText = "[Error connecting to AI]";
-            await typeText(errorText);
-
-            setMessages((prev) => [...prev, {role: "assistant", text: errorText}]);
-            setStreamingText("");
+            setIsStreaming(false);
+            streamingCancelledRef.current = false;
             setTimeout(() => textareaRef.current?.focus(), 100);
         }
     };
+
+    const handleStop = () => {
+        if (controllerRef.current) {
+            try {
+                controllerRef.current.abort();
+            } catch (e) {
+                console.warn('abort failed', e);
+            }
+        }
+        streamingCancelledRef.current = true;
+        setIsLoading(false);
+        setIsStreaming(false);
+    };
+
+    // autosize textarea so pasted long text is visible
+    const autosize = () => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        ta.style.height = 'auto';
+        const max = parseInt(getComputedStyle(ta).maxHeight) || 200;
+        const newH = Math.min(ta.scrollHeight, max);
+        ta.style.height = newH + 'px';
+        ta.style.overflowY = ta.scrollHeight > max ? 'auto' : 'hidden';
+    };
+    useEffect(() => {
+        autosize();
+    }, []);
 
     return (
         <div className="chat-container">
@@ -109,7 +183,7 @@ const ChatBox = () => {
             </div>
 
             {/* Messages Container */}
-            <div className="messages-container">
+            <div className="messages-container" ref={messagesContainerRef}>
                 {messages.length === 0 && !isLoading && !isStreaming ? (
                     <div className="empty-state">
                         <div className="empty-state-content">
@@ -164,7 +238,14 @@ const ChatBox = () => {
                                                     : "message-bubble-ai"
                                             }`}
                                         >
-                                            <div className="message-text">{msg.text}</div>
+                                            <div className="message-text">
+                                                {msg.role === "assistant" ? (
+                                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                                ) : (
+                                                    msg.text
+                                                )}
+                                            </div>
+
                                         </div>
                                     </div>
                                 </div>
@@ -223,7 +304,12 @@ const ChatBox = () => {
               <textarea
                   ref={textareaRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => {
+                      setInput(e.target.value);
+                      autosize();
+                  }}
+                  onInput={() => autosize()}
+                  onPaste={() => setTimeout(autosize, 0)}
                   onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -237,27 +323,29 @@ const ChatBox = () => {
                         </div>
                         <button
                             type="button"
-                            onClick={handleSubmit}
-                            disabled={!input.trim() || isLoading || isStreaming}
+                            onClick={(isLoading || isStreaming) ? handleStop : handleSubmit}
+                            disabled={!input.trim() && !(isLoading || isStreaming)}
                             className={`send-button ${
-                                input.trim() && !isLoading && !isStreaming
+                                (input.trim() && !isLoading && !isStreaming) || (isLoading || isStreaming)
                                     ? "send-button-active"
                                     : "send-button-disabled"
                             }`}
                         >
-                            <svg
-                                className="send-icon"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 10l7-7m0 0l7 7m-7-7v18"
-                                />
-                            </svg>
+                            {isLoading || isStreaming ? 'Stop' : (
+                                <svg
+                                    className="send-icon"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 10l7-7m0 0l7 7m-7-7v18"
+                                    />
+                                </svg>
+                            )}
                         </button>
                     </div>
                 </div>

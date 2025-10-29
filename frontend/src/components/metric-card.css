@@ -1,0 +1,189 @@
+:root {
+  /* Dark theme tokens (override these in a global theme if needed) */
+  --mc-bg: #0b1020;           /* card background */
+  --mc-surface: rgba(255,255,255,0.03);
+  --mc-accent: #7c5cff;       /* primary accent */
+  --mc-accent-2: #4fd1c5;     /* secondary accent */
+  --mc-muted: #94a3b8;        /* muted text */
+  --mc-text: #e6eef8;         /* primary text */
+  --mc-border: rgba(255,255,255,0.04);
+  --mc-glow: rgba(124,92,255,0.18);
+  --mc-radius: 12px;
+  --mc-shadow: 0 6px 20px rgba(2,6,23,0.45);
+  --mc-transition: 180ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* Card root */
+.metric-card {
+  background: linear-gradient(180deg, var(--mc-surface), transparent 60%), var(--mc-bg);
+  border: 1px solid var(--mc-border);
+  border-radius: var(--mc-radius);
+  padding: 14px;
+  color: var(--mc-text);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: none;
+  transform: translateZ(0);
+  transition: transform var(--mc-transition), box-shadow var(--mc-transition), border-color var(--mc-transition);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 86px;
+  will-change: transform;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* Hover / focus states - subtle lift + glow */
+.metric-card:hover,
+.metric-card:focus-within,
+.metric-card:active {
+  transform: translateY(-6px) scale(1.002);
+  box-shadow: var(--mc-shadow);
+  border-color: rgba(124,92,255,0.22);
+}
+
+/* Keyboard focus accessibility */
+.metric-card:focus-visible {
+  outline: 3px solid rgba(79,70,229,0.14);
+  outline-offset: 3px;
+}
+
+/* Header row (title & value) */
+.metric-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Title (left) */
+.metric-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--mc-text);
+  letter-spacing: -0.01em;
+}
+
+/* Value (right) */
+.metric-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--mc-accent);
+  background: linear-gradient(90deg, var(--mc-accent), var(--mc-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Sub text / small description */
+.metric-sub {
+  font-size: 0.78rem;
+  color: var(--mc-muted);
+  margin-top: -2px;
+}
+
+/* Chart / sparkline container inside the card */
+.metric-chart {
+  display: block;
+  width: 100%;
+  height: 60px;
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent 40%);
+}
+
+/* Make embedded SVGs adapt to the card and inherit colors */
+.metric-chart svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  fill: none;
+}
+
+/* Default stroke/fill fallbacks for chart libraries */
+.metric-chart path,
+.metric-chart polyline,
+.metric-chart line,
+.metric-chart circle {
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Small badge or tiny KPI in corner (optional) */
+.metric-kpi {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.02);
+  color: var(--mc-text);
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  backdrop--webkit-backdrop-filter: blur(6px);
+}
+
+/* Subtle gradient overlay to hint interactivity at the bottom */
+.metric-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28%;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(11,16,32,0), rgba(11,16,32,0.14));
+  border-radius: inherit;
+}
+
+/* Compact mode for small screens / sidebars */
+@media (max-width: 520px) {
+  .metric-card {
+    padding: 10px;
+    min-height: 72px;
+  }
+  .metric-value { font-size: 1rem; }
+  .metric-chart { height: 48px; }
+}
+
+/* Styling helpers for list-like children in the card */
+.metric-card .list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--mc-muted);
+  font-size: 0.85rem;
+}
+
+/* Utility: variant for neutral cards that shouldn't highlight on hover */
+.metric-card.is-static {
+  cursor: default;
+}
+.metric-card.is-static:hover,
+.metric-card.is-static:focus-within {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--mc-border);
+}
+
+/* Provide a subtle shimmer animation for loading placeholders */
+.metric-card.loading {
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+}
+.metric-card.loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.01) 100%);
+  transform: translateX(-120%);
+  animation: mc-shimmer 1.3s linear infinite;
+}
+@keyframes mc-shimmer {
+  100% { transform: translateX(120%); }
+}
