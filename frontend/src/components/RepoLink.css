@@ -1,0 +1,86 @@
+/* RepoLink.css */
+
+/* Container Wrapper */
+.repo-input-wrapper {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.repo-input-container {
+  width: 100%;
+  max-width: 48rem;
+}
+
+/* Input Box */
+.input-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  background-color: white;
+  border-radius: 0.75rem;
+  border: 2px solid #e5e7eb;
+  padding: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.input-box:focus-within {
+  border-color: #3b82f6;
+}
+
+/* Textarea */
+.repo-textarea {
+  flex: 1;
+  background-color: transparent;
+  color: #111827;
+  outline: none;
+  resize: none;
+  min-height: 50px;
+  max-height: 200px;
+  border: none;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.repo-textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Submit Button */
+.submit-button {
+  flex-shrink: 0;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submit-button.active {
+  background-color: #000000;
+  color: white;
+}
+
+.submit-button.active:hover {
+  background-color: #1f2937;
+}
+
+.submit-button.disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Arrow Icon */
+.arrow-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}

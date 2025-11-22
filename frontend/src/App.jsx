@@ -1,22 +1,19 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 
+// Page Imports
 import WelcomeScreen from './pages/welcome_pages/WelcomeScreen';
 import HomePage from './HomePage';
 import ResultPage from './ResultPage';
 import Registration from './pages/registration_pages/Registration';
 import Login from './pages/login_pages/Login';
+import RepoLink from "./components/RepoLink"; // Added this back
 
+// Wrapper Component for Welcome
 const WelcomePage = () => {
   const navigate = useNavigate();
-
-  const handleLogin = () => {
-    navigate('/login');
-  };
-
-  const handleContinueWithoutLogin = () => {
-    navigate('/home');
-  };
+  const handleLogin = () => navigate('/login');
+  const handleContinueWithoutLogin = () => navigate('/home');
 
   return (
     <WelcomeScreen 
@@ -26,9 +23,9 @@ const WelcomePage = () => {
   );
 };
 
+// Wrapper Component for Login
 const LoginPage = () => {
   const navigate = useNavigate();
-
   const handleBack = () => navigate("/");
   const handleRegister = () => navigate("/register");
   const handleLoginSuccess = (userData) => {
@@ -47,14 +44,12 @@ const LoginPage = () => {
   );
 };
 
+// Wrapper Component for Registration
 const RegistrationPage = () => {
   const navigate = useNavigate();
-  
   const handleBack = () => navigate("/");
   const handleLogin = () => navigate("/login");
-  const handleRegisterSuccess = () => {
-    navigate("/login");
-  };
+  const handleRegisterSuccess = () => navigate("/login");
 
   return (
     <Registration 
@@ -65,15 +60,22 @@ const RegistrationPage = () => {
   );
 };
 
+// Main App Component
 function App() {
   return (
     <Router>
       <Routes>
+        {/* Landing & Auth Routes */}
         <Route path="/" element={<WelcomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegistrationPage />} />
+        
+        {/* Main App Routes */}
         <Route path="/home" element={<HomePage />} />
         <Route path="/result-page" element={<ResultPage />} />
+        
+        {/* Component Test Route */}
+        <Route path="/test-repo" element={<RepoLink />} />
       </Routes>
     </Router>
   );
