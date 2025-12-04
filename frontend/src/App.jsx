@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 
+<<<<<<< HEAD
 // Page Imports
 import WelcomeScreen from './pages/welcome_pages/WelcomeScreen';
 import HomePage from './HomePage';
@@ -8,6 +9,11 @@ import ResultPage from './ResultPage';
 import Registration from './pages/registration_pages/Registration';
 import Login from './pages/login_pages/Login';
 import RepoLink from "./components/RepoLink"; // Added this back
+=======
+import HomePage from './HomePage';
+import ResultPage from './ResultPage';
+// import RepoLink from "./components/RepoLink";
+>>>>>>> 9deace3 (modified app.jsx)
 
 // Wrapper Component for Welcome
 const WelcomePage = () => {
@@ -62,6 +68,7 @@ const RegistrationPage = () => {
 
 // Main App Component
 function App() {
+<<<<<<< HEAD
   return (
     <Router>
       <Routes>
@@ -79,6 +86,17 @@ function App() {
       </Routes>
     </Router>
   );
+=======
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<HomePage/>} />
+                <Route path="/result-page" element={<ResultPage/>} />
+                {/* <Route path="/" element={<RepoLink/>} /> */}
+            </Routes>
+        </Router>
+    )
+>>>>>>> 9deace3 (modified app.jsx)
 }
 
 export default App;
