@@ -127,7 +127,6 @@
   opacity: 0.9;
 }
 
-/* Responsive Design */
 @media (max-width: 640px) {
   .welcome-card {
     padding: 1.5rem;
