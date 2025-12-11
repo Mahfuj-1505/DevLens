@@ -4,18 +4,16 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-route
 import WelcomeScreen from './pages/welcome_pages/WelcomeScreen';
 import HomePage from './HomePage';
 import ResultPage from './ResultPage';
+import Registration from './pages/registration_pages/Registration';
 
-// Welcome Page Wrapper
 const WelcomePage = () => {
   const navigate = useNavigate();
 
   const handleLogin = () => {
-    // Navigate to home page after login (you can add LoginScreen route later)
-    navigate('/home');
+    navigate('/register');
   };
 
   const handleContinueWithoutLogin = () => {
-    // Navigate to home page without login
     navigate('/home');
   };
 
@@ -27,11 +25,27 @@ const WelcomePage = () => {
   );
 };
 
+const RegistrationPage = () => {
+  const navigate = useNavigate();
+  
+  const handleBack = () => navigate("/");
+  const handleLogin = () => navigate("/");
+  const handleRegistrationSuccess = () => navigate("/home");
+
+  return(
+    <Registration onBack={handleBack}
+      onLogin={handleLogin}
+      onRegistrationSuccess={handleRegistrationSuccess}
+    />
+  );
+};
+
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<WelcomePage />} />
+        <Route path="/register" element={<RegistrationPage />} />
         {/* <Route path="/home" element={<HomePage />} />
         <Route path="/result-page" element={<ResultPage />} /> */}
       </Routes>
