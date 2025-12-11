@@ -106,27 +106,6 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         }
     };
 
-    const handleForgotPassword = () => {
-        const email = formData.email.trim();
-
-        if(!email) {
-            setError("Please enter your email first to reset password.");
-            return;
-        }
-
-        if(!validateEmail(email)) {
-            setError("Please enter a valid email.");
-            return;
-        }
-
-        setLoading(true);
-        setError("");
-        setTimeout(() => {
-            setLoading(false);
-            alert(`Password reset link sent to ${email}. Please check your inbox.`);
-        }, 1500);
-    };
-
     return (
         <div className="registration-container">
             <div className="registration-card">
@@ -239,12 +218,6 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                     <button className="btn btn-register" disabled={loading} onClick={handleRegister}>
                         {loading ? "Creating account..." : "Create Account"}
                     </button>
-
-                    <p className="forgot-password" style={{ textAlign: "center", marginTop: "15px" }}>
-                        <button type="button" onClick={handleForgotPassword} className="link-button">
-                            Forgot Password?
-                        </button>
-                    </p>
                 </div>
 
                 <div className="registration-footer">

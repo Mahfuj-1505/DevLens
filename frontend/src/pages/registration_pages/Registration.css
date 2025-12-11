@@ -158,22 +158,6 @@
     color: rgba(255, 255, 255, 0.85);
 }
 
-.forgot-password {
-    text-align: right;
-    margin-top: -10px;
-    margin-bottom: 15px;
-}
-
-.forgot-password .link-button {
-    font-size: 0.95rem;
-    color: #ff99ff;
-}
-
-.forgot-password .link-button:hover {
-    color: #ffb3ff;
-    text-decoration: underline;
-}
-
 .btn-register {
     width: 66%; 
     padding: 16px;
