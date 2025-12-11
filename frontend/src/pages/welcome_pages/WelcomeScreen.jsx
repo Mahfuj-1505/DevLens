@@ -26,7 +26,7 @@ const WelcomeScreen = ({ onLogin, onContinueWithoutLogin }) => {
             onClick={onContinueWithoutLogin}
             className="btn btn-secondary"
           >
-            Continue without login
+            Anonymous
           </button>
         </div>
 
