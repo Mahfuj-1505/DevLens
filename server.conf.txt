@@ -1,0 +1,5 @@
+mysql> CREATE USER devlens_user@localhost IDENTIFIED BY DevLens@1234; 
+Query OK, 0 rows affected (0.01 sec) 
+
+mysql> grant all privileges on *.* to devlens_user@localhost; 
+Query OK, 0 rows affected (0.02 sec) mysql>  cat server.conf.txt
