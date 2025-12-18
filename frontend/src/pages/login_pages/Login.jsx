@@ -29,13 +29,13 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
         setLoading(true);
         setError('');
 
-        if(!formdata.email || !formdata.password) {
+        if(!formData.email || !formData.password) {
             setError('Please fill in all fields');
             setLoading(false);
             return;
         }
 
-        if(!validateEmail(formdata.email)) {
+        if(!validateEmail(formData.email)) {
             setError('Please enter a valid email address');
             setLoading(false);
             return;
@@ -60,7 +60,7 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
             ];
 
             const user = mockUsers.find(
-                u => u.email === formdata.email && u.password === formdata.password
+                u => u.email === formData.email && u.password === formData.password
             );
 
             if(user) {
