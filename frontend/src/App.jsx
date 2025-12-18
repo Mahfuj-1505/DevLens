@@ -1,19 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 
-<<<<<<< HEAD
 // Page Imports
 import WelcomeScreen from './pages/welcome_pages/WelcomeScreen';
 import HomePage from './HomePage';
 import ResultPage from './ResultPage';
 import Registration from './pages/registration_pages/Registration';
 import Login from './pages/login_pages/Login';
-import RepoLink from "./components/RepoLink"; // Added this back
-=======
-import HomePage from './HomePage';
-import ResultPage from './ResultPage';
-// import RepoLink from "./components/RepoLink";
->>>>>>> 9deace3 (modified app.jsx)
+import RepoLink from "./components/RepoLink";
 
 // Wrapper Component for Welcome
 const WelcomePage = () => {
@@ -30,7 +24,7 @@ const WelcomePage = () => {
 };
 
 // Wrapper Component for Login
-const LoginPage = () => {
+const LoginPageWrapper = () => {
   const navigate = useNavigate();
   const handleBack = () => navigate("/");
   const handleRegister = () => navigate("/register");
@@ -51,7 +45,7 @@ const LoginPage = () => {
 };
 
 // Wrapper Component for Registration
-const RegistrationPage = () => {
+const RegistrationPageWrapper = () => {
   const navigate = useNavigate();
   const handleBack = () => navigate("/");
   const handleLogin = () => navigate("/login");
@@ -66,16 +60,14 @@ const RegistrationPage = () => {
   );
 };
 
-// Main App Component
 function App() {
-<<<<<<< HEAD
   return (
     <Router>
       <Routes>
         {/* Landing & Auth Routes */}
         <Route path="/" element={<WelcomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegistrationPage />} />
+        <Route path="/login" element={<LoginPageWrapper />} />
+        <Route path="/register" element={<RegistrationPageWrapper />} />
         
         {/* Main App Routes */}
         <Route path="/home" element={<HomePage />} />
@@ -83,20 +75,12 @@ function App() {
         
         {/* Component Test Route */}
         <Route path="/test-repo" element={<RepoLink />} />
+
+        {/* Fallback route */}
+        <Route path="*" element={<WelcomePage />} />
       </Routes>
     </Router>
   );
-=======
-    return (
-        <Router>
-            <Routes>
-                <Route path="/" element={<HomePage/>} />
-                <Route path="/result-page" element={<ResultPage/>} />
-                {/* <Route path="/" element={<RepoLink/>} /> */}
-            </Routes>
-        </Router>
-    )
->>>>>>> 9deace3 (modified app.jsx)
 }
 
 export default App;
