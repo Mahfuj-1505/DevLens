@@ -39,6 +39,8 @@ dist-ssr
 *.local
 venv
 .venv
+*.env
+.env
 
 
 # Editor directories and files
