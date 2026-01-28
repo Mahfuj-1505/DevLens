@@ -6,5 +6,5 @@ class User(Base):
 
     firstname = Column(String(50))
     lastname = Column(String(50))
-    email = Column(String(255), primary_key = True)
-    password = Column(String(32))
+    email = Column(String(255), primary_key=True)
+    password = Column(String(255))  # Increased to support hashed passwords

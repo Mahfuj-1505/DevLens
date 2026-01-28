@@ -1,48 +1,67 @@
-# ---------- main.py ----------
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
+from database import SessionLocal, engine
+from models import User
 from pydantic import BaseModel
-from gemini_server import get_response  # <-- Import model logic
+from typing import List
 
-# ---------- FastAPI App ----------
-app = FastAPI(title="Chatbot Backend with Integrated Model")
-
-# ---------- CORS (allow frontend) ----------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="DevLens API")
 
 
-# ---------- Request Schema ----------
-class ChatRequest(BaseModel):
-    message: str
+# --- Pydantic schemas ---
+class UserCreate(BaseModel):
+    firstname: str
+    lastname: str
+    email: str
+    password: str
+    role: str
 
 
-# ---------- Chat Endpoint ----------
-@app.post("/chat")
-def chat(req: ChatRequest):
-    """Handles chat requests from frontend"""
+class UserResponse(BaseModel):
+    user_id: int
+    firstname: str
+    lastname: str
+    email: str
+    role: str
+
+    class Config:
+        orm_mode = True
+
+
+# --- Dependency ---
+def get_db():
+    db = SessionLocal()
     try:
-        response = get_response(req.message)
-        return {"response": response}
-    except Exception as e:
-        return {"error": f"Model error: {str(e)}"}
+        yield db
+    finally:
+        db.close()
 
 
-@app.get("/")
-def root():
-    return {"message": "Backend API with integrated AI model is running!"}
+# --- 1️⃣ Create a user ---
+@app.post("/users/", response_model=UserResponse)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    db_user = User(**user.dict())
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 
-# ---------- Run Server ----------
-if __name__ == "__main__":
-    import os
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port)  # remove reload=True
+# --- 2️⃣ Get a single user by user_id ---
+@app.get("/users/{user_id}", response_model=UserResponse)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.user_id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
 
+
+# --- 3️⃣ Get all users ---
+@app.get("/users/", response_model=List[UserResponse])
+def get_all_users(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    return users
