@@ -54,10 +54,18 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         setFormData({ ...formData, [name]: value });
 
         let fieldError = null;
-        if (name === "firstName") fieldError = validateName(value, "First name");
-        if (name === "lastName") fieldError = validateName(value, "Last name");
-        if (name === "email") fieldError = validateEmail(value);
-        if (name === "password") fieldError = validatePassword(value);
+        if (name === "firstName") {
+            fieldError = validateName(value, "First name");
+        }
+        if (name === "lastName") {
+            fieldError = validateName(value, "Last name");
+        }
+        if (name === "email") {
+            fieldError = validateEmail(value);
+        }
+        if (name === "password") {
+            fieldError = validatePassword(value);
+        }
         if (name === "confirmPassword")
             fieldError = value !== formData.password ? "Passwords do not match" : null;
 
