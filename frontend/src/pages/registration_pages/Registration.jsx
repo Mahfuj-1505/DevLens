@@ -1,21 +1,20 @@
-import React, { useState } from "react";
-import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
-import "./Registration.css";
+import React, { use, useState } from "react";
+import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle} from 'lucide-react';
+import './Registration.css';
 
-const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
+const Registration = ({ onBack, onLogin, onRegistrationSuccess}) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [formData, setFormData] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
+        firstName: '',
+        lastName: '',
+        email : '',
+        password : '',
+        confirmPassword : ''
     });
-
-    const [error, setError] = useState("");
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
+    const [successMessage, setSuccessmessage] = useState('');
 
     const handleInputChange = (e) => {
         setFormData({
