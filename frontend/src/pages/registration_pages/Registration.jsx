@@ -5,6 +5,7 @@ import "./Registration.css";
 const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
     const [formData, setFormData] = useState({
         firstName: "",
         lastName: "",
@@ -13,37 +14,54 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         confirmPassword: "",
     });
 
+    const [errors, setErrors] = useState({});
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
 
-    const handleInputChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-        setError("");
+    const validateName = (name, fieldName) => {
+        if (!name.trim()) return `${fieldName} is required`;
+        if (!/^[A-Za-z\s]+$/.test(name))
+            return `${fieldName} should contain only letters and spaces`;
+        if (name.trim().length < 3)
+            return `${fieldName} must be at least 3 characters long`;
+        return null;
     };
 
     const validateEmail = (email) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        return emailRegex.test(email);
+        if (!email.trim()) return "Email is required";
+        const emailRegex = /^[^\s@]+@iit\.du\.ac\.bd$/;
+        if (!emailRegex.test(email))
+            return "Email must be an @iit.du.ac.bd address";
+        return null;
     };
 
     const validatePassword = (password) => {
-        if(password.length < 6) {
-            return "Password must be at least 6 characters long";
-        }
-        if(!/[A-Z]/.test(password)) {
+        if (password.length < 8)
+            return "Password must be at least 8 characters long";
+        if (!/[A-Z]/.test(password))
             return "Password must contain an uppercase letter";
-        }
-        if(!/[a-z]/.test(password)) {
+        if (!/[a-z]/.test(password))
             return "Password must contain a lowercase letter";
-        }
-        if(!/[0-9]/.test(password)) {
+        if (!/[0-9]/.test(password))
             return "Password must contain a number";
-        }
         return null;
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+
+        setFormData({ ...formData, [name]: value });
+
+        let fieldError = null;
+        if (name === "firstName") fieldError = validateName(value, "First name");
+        if (name === "lastName") fieldError = validateName(value, "Last name");
+        if (name === "email") fieldError = validateEmail(value);
+        if (name === "password") fieldError = validatePassword(value);
+        if (name === "confirmPassword")
+            fieldError = value !== formData.password ? "Passwords do not match" : null;
+
+        setErrors({ ...errors, [name]: fieldError });
     };
 
     const handleRegister = () => {
@@ -51,48 +69,32 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         setError("");
         setSuccessMessage("");
 
-        if(!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
-            setError("All fields are required.");
-            setLoading(false);
-            return;
-        }
+        const newErrors = {};
 
-        if(!validateEmail(formData.email)) {
-            setError("Invalid email address.");
-            setLoading(false);
-            return;
-        }
+        newErrors.firstName = validateName(formData.firstName, "First name");
+        newErrors.lastName = validateName(formData.lastName, "Last name");
+        newErrors.email = validateEmail(formData.email);
+        newErrors.password = validatePassword(formData.password);
 
-        const passError = validatePassword(formData.password);
-        if(passError) {
-            setError(passError);
-            setLoading(false);
-            return;
-        }
+        if (!formData.confirmPassword)
+            newErrors.confirmPassword = "Please confirm your password";
+        else if (formData.password !== formData.confirmPassword)
+            newErrors.confirmPassword = "Passwords do not match";
 
-        if(formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match.");
+        Object.keys(newErrors).forEach(
+            (key) => newErrors[key] === null && delete newErrors[key]
+        );
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setError("Please fix the errors below.");
             setLoading(false);
             return;
         }
 
         setTimeout(() => {
-            const mockUsers = [
-                { email: "john.doe@gmail.com", firstName: "John", lastName: "Doe" },
-                { email: "demo@devlens.com", firstName: "Demo", lastName: "User" },
-            ];
-
-            const exists = mockUsers.find((u) => u.email === formData.email);
-
-            if(exists) {
-                setError("This email is already registered.");
-                setLoading(false);
-                return;
-            }
-
             setSuccessMessage("Registration successful!");
             setLoading(false);
-
             setTimeout(() => {
                 alert("Please check your mail to verify your account.");
                 onRegistrationSuccess();
@@ -101,9 +103,13 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
     };
 
     const handleKeyPress = (e) => {
-        if(e.key === "Enter") {
-            handleRegister();
-        }
+        if (e.key === "Enter") handleRegister();
+    };
+
+    const errorStyle = {
+        color: "#ff4d6d",
+        fontSize: "0.85rem",
+        marginTop: "6px",
     };
 
     return (
@@ -138,14 +144,14 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                             <div className="input-wrapper">
                                 <User className="input-icon" />
                                 <input
-                                 type="text"
-                                 name="firstName"
-                                 value={formData.firstName}
-                                 onChange={handleInputChange}
-                                 onKeyPress={handleKeyPress}
-                                 placeholder="Enter first name"
+                                    type="text"
+                                    name="firstName"
+                                    value={formData.firstName}
+                                    onChange={handleInputChange}
+                                    onKeyPress={handleKeyPress}
                                 />
                             </div>
+                            {errors.firstName && <p style={errorStyle}>{errors.firstName}</p>}
                         </div>
 
                         <div className="form-group form-group-half">
@@ -153,14 +159,14 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                             <div className="input-wrapper">
                                 <User className="input-icon" />
                                 <input
-                                 type="text"
-                                 name="lastName"
-                                 value={formData.lastName}
-                                 onChange={handleInputChange}
-                                 onKeyPress={handleKeyPress}
-                                 placeholder="Enter last name"
+                                    type="text"
+                                    name="lastName"
+                                    value={formData.lastName}
+                                    onChange={handleInputChange}
+                                    onKeyPress={handleKeyPress}
                                 />
                             </div>
+                            {errors.lastName && <p style={errorStyle}>{errors.lastName}</p>}
                         </div>
                     </div>
 
@@ -169,14 +175,14 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                         <div className="input-wrapper">
                             <Mail className="input-icon" />
                             <input
-                             type="email"
-                             name="email"
-                             value={formData.email}
-                             onChange={handleInputChange}
-                             onKeyPress={handleKeyPress}
-                             placeholder="example@gmail.com"
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleInputChange}
+                                onKeyPress={handleKeyPress}
                             />
                         </div>
+                        {errors.email && <p style={errorStyle}>{errors.email}</p>}
                     </div>
 
                     <div className="form-group">
@@ -184,17 +190,21 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                         <div className="input-wrapper">
                             <Lock className="input-icon" />
                             <input
-                             type={showPassword ? "text" : "password"}
-                             name="password"
-                             value={formData.password}
-                             onChange={handleInputChange}
-                             onKeyPress={handleKeyPress}
-                             placeholder="Create password"
+                                type={showPassword ? "text" : "password"}
+                                name="password"
+                                value={formData.password}
+                                onChange={handleInputChange}
+                                onKeyPress={handleKeyPress}
                             />
-                            <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
                                 {showPassword ? <EyeOff /> : <Eye />}
                             </button>
                         </div>
+                        {errors.password && <p style={errorStyle}>{errors.password}</p>}
                     </div>
 
                     <div className="form-group">
@@ -202,36 +212,33 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                         <div className="input-wrapper">
                             <Lock className="input-icon" />
                             <input
-                             type={showConfirmPassword ? "text" : "password"}
-                             name="confirmPassword"
-                             value={formData.confirmPassword}
-                             onChange={handleInputChange}
-                             onKeyPress={handleKeyPress}
-                             placeholder="Re-enter password"
+                                type={showConfirmPassword ? "text" : "password"}
+                                name="confirmPassword"
+                                value={formData.confirmPassword}
+                                onChange={handleInputChange}
+                                onKeyPress={handleKeyPress}
                             />
-                            <button type="button" className="password-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() =>
+                                    setShowConfirmPassword(!showConfirmPassword)
+                                }
+                            >
                                 {showConfirmPassword ? <EyeOff /> : <Eye />}
                             </button>
                         </div>
+                        {errors.confirmPassword && (
+                            <p style={errorStyle}>{errors.confirmPassword}</p>
+                        )}
                     </div>
 
-                    <button className="btn btn-register" disabled={loading} onClick={handleRegister}>
+                    <button
+                        className="btn btn-register"
+                        disabled={loading}
+                        onClick={handleRegister}
+                    >
                         {loading ? "Creating account..." : "Create Account"}
-                    </button>
-                </div>
-
-                <div className="registration-footer">
-                    <p>
-                        Already have an account?{" "}
-                        <button onClick={onLogin} className="link-button">
-                            Log in
-                        </button>
-                    </p>
-                </div>
-
-                <div className="back-button-wrapper">
-                    <button onClick={onBack} className="back-button">
-                        Back to home
                     </button>
                 </div>
             </div>
