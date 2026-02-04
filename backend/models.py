@@ -10,7 +10,7 @@ class User(Base):
     firstname = Column(String(50), nullable=False)
     lastname = Column(String(50), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
-    password = Column(String(50), nullable=False)
+    password = Column(String(255), nullable=False)  # Increased length for hashed passwords
     role = Column(String(50), nullable=False)
 
     # One-to-many relationship with Repository
