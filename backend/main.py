@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 from models import User
@@ -14,8 +15,22 @@ from auth_utils import (
     get_db,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+# Import auth router
+from auth import router as auth_router
 
 app = FastAPI(title="DevLens API")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include auth router
+app.include_router(auth_router)
 
 
 # ==================== Pydantic Schemas ====================

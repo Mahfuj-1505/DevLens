@@ -49,13 +49,13 @@ const RegistrationPageWrapper = () => {
   const navigate = useNavigate();
   const handleBack = () => navigate("/");
   const handleLogin = () => navigate("/login");
-  const handleRegisterSuccess = () => navigate("/login");
+  const handleRegistrationSuccess = () => navigate("/login");
 
   return (
     <Registration 
       onBack={handleBack}
       onLogin={handleLogin}
-      onRegisterSuccess={handleRegisterSuccess}
+      onRegistrationSuccess={handleRegistrationSuccess}
     />
   );
 };

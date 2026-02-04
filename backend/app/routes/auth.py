@@ -1,39 +1,35 @@
 """
-Authentication and Authorization Module
+Authentication and Authorization Routes
 Handles user login, registration, and JWT token management
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
-from datetime import datetime, timedelta
-from passlib.context import CryptContext
-import jwt
-import os
-from dotenv import load_dotenv
+from datetime import timedelta
 
-from db_connect.database import sessionLocal
-from db_connect.model import User
+from app.models.user import User
+from app.utils.database import get_db
+from app.utils.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    validate_password_strength,
+    decode_access_token
+)
+from app.config.settings import get_settings
 
-load_dotenv()
-
-# JWT Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "devlens-super-secret-key-change-this-in-production-min-32-chars")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+settings = get_settings()
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # ==================== Pydantic Models ====================
 
 class UserRegistration(BaseModel):
+    """User registration request model"""
     firstName: str = Field(..., min_length=1, max_length=50)
     lastName: str = Field(..., min_length=1, max_length=50)
     email: EmailStr
@@ -53,6 +49,7 @@ class UserRegistration(BaseModel):
 
 
 class UserLogin(BaseModel):
+    """User login request model"""
     email: EmailStr
     password: str
 
@@ -66,73 +63,20 @@ class UserLogin(BaseModel):
 
 
 class Token(BaseModel):
+    """Token response model"""
     access_token: str
     token_type: str
     user: dict
 
 
 class UserResponse(BaseModel):
+    """User response model"""
     email: str
     firstName: str
     lastName: str
 
     class Config:
         from_attributes = True
-
-
-# ==================== Database Dependency ====================
-
-def get_db():
-    """Get database session"""
-    db = sessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# ==================== Utility Functions ====================
-
-def hash_password(password: str) -> str:
-    """Hash password using bcrypt"""
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against bcrypt hash"""
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create JWT access token"""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-def validate_password_strength(password: str) -> tuple[bool, str]:
-    """Validate password meets security requirements"""
-    if len(password) < 6:
-        return False, "Password must be at least 6 characters long"
-    
-    has_upper = any(c.isupper() for c in password)
-    has_lower = any(c.islower() for c in password)
-    has_digit = any(c.isdigit() for c in password)
-    
-    if not has_upper:
-        return False, "Password must contain at least one uppercase letter"
-    if not has_lower:
-        return False, "Password must contain at least one lowercase letter"
-    if not has_digit:
-        return False, "Password must contain at least one number"
-    
-    return True, "Password is valid"
 
 
 # ==================== Authentication Routes ====================
@@ -179,7 +123,7 @@ async def register_user(user_data: UserRegistration, db: Session = Depends(get_d
         lastname=user_data.lastName,
         email=user_data.email,
         password=hashed_password,
-        role="user"  # Default role
+        role="user"
     )
     
     try:
@@ -188,7 +132,7 @@ async def register_user(user_data: UserRegistration, db: Session = Depends(get_d
         db.refresh(new_user)
         
         return {
-            "message": "Registration successful! Please check your email to verify your account.",
+            "message": "Registration successful!",
             "user": {
                 "email": new_user.email,
                 "firstName": new_user.firstname,
@@ -233,7 +177,7 @@ async def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
         )
     
     # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email},
         expires_delta=access_token_expires
@@ -264,12 +208,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+    
+    email: str = payload.get("sub")
+    if email is None:
         raise credentials_exception
     
     user = db.query(User).filter(User.email == email).first()

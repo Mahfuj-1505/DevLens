@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, Lock, Mail, AlertCircle} from 'lucide-react';
+import { api } from "../../api";
 import './Login.css';
 
 const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
@@ -25,7 +26,7 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
         return emailRegex.test(email);
     };
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         setLoading(true);
         setError('');
 
@@ -41,49 +42,37 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
             return;
         }
 
-        setTimeout(() => {
-            const mockUsers = [
-                {
-                    email: 'john.doe@email.com',
-                    password: 'Demo123',
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    verified: true
+        try {
+            const response = await fetch(`${api.baseURL}/auth/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-                {
-                    email: 'demo@devlens.com',
-                    password: 'demo123',
-                    firstName: 'Demo',
-                    lastName: 'User',
-                    verified: true
-                }
-            ];
+                body: JSON.stringify(formData),
+            });
 
-            const user = mockUsers.find(
-                u => u.email === formData.email && u.password === formData.password
-            );
+            const data = await response.json();
 
-            if(user) {
-                if(!user.verified) {
-                    setError('Please verify your email adress before logging in');
-                    setLoading(false);
-                    return;
-                }
-
-                const userData = {
-                    email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    token: 'mock-jwt-token-' + Date.now()
-                };
-
-                onLoginSuccess(userData);
-            } else {
-                setError('Invalid email or password');
+            if (!response.ok) {
+                throw new Error(data.detail || "Login failed");
             }
 
+            // Store token in localStorage
+            localStorage.setItem("access_token", data.access_token);
+            
+            const userData = {
+                email: data.user.email,
+                firstName: data.user.firstName,
+                lastName: data.user.lastName,
+                token: data.access_token
+            };
+
+            onLoginSuccess(userData);
+        } catch (err) {
+            setError(err.message || 'Invalid email or password');
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     const handleKeyPress = (e) => {

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, Lock, Mail, User, AlertCircle, CheckCircle } from "lucide-react";
+import { api } from "../../api";
 import "./Registration.css";
 
 const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
@@ -72,7 +73,7 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         setErrors({ ...errors, [name]: fieldError });
     };
 
-    const handleRegister = () => {
+    const handleRegister = async () => {
         setLoading(true);
         setError("");
         setSuccessMessage("");
@@ -100,14 +101,32 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
             return;
         }
 
-        setTimeout(() => {
+        // Call backend API
+        try {
+            const response = await fetch(`${api.baseURL}/auth/register`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || "Registration failed");
+            }
+
             setSuccessMessage("Registration successful!");
-            setLoading(false);
             setTimeout(() => {
-                alert("Please check your mail to verify your account.");
+                alert("Registration complete! You can now log in.");
                 onRegistrationSuccess();
-            }, 2000);
-        }, 1500);
+            }, 1500);
+        } catch (err) {
+            setError(err.message || "Registration failed. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleKeyPress = (e) => {
