@@ -23,9 +23,8 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions })
   };
 
   return (
-    <div style={{ display: "flex", width: "100%", height: "100%" }}>
-      {/* Middle column: Mode buttons */}
-      <div className="flow-section fade-in">
+    <div style={{ display: "flex", width: "100%", height: "100%", gap: "24px" }}>
+     <div className="flow-section fade-in" style={{ flex: "0 0 160px", borderRight: "1px solid rgba(255,255,255,0.15)", paddingRight: "24px" }}>
         {["Default Option", "Advanced Option"].map((opt) => (
           <button
             key={opt}
@@ -37,7 +36,6 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions })
         ))}
       </div>
 
-      {/* Right column: Options */}
       {mode && (
         <div className="flow-section card-container fade-in">
           {mode === "Default Option" && (

@@ -35,20 +35,26 @@ function App() {
         <div className="horizontal-flow">
           {!showSummary ? (
             <>
-              <SplSelector
-                selectedSpl={selectedSpl}
-                setSelectedSpl={setSelectedSpl}
-              />
-              {selectedSpl && (
-                <OptionPanel
-                  spl={selectedSpl}
-                  setShowSummary={setShowSummary}
-                  setSelectedOptions={setSelectedOptions}
+              <div className="flow-section flow-section-spl">
+                <SplSelector
+                  selectedSpl={selectedSpl}
+                  setSelectedSpl={setSelectedSpl}
                 />
+              </div>
+              {selectedSpl && (
+                <div className="flow-section flow-section-options">
+                  <OptionPanel
+                    spl={selectedSpl}
+                    setShowSummary={setShowSummary}
+                    setSelectedOptions={setSelectedOptions}
+                  />
+                </div>
               )}
             </>
           ) : (
-            <OptionSummary selectedOptions={selectedOptions} />
+            <div className="flow-section flow-section-summary">
+              <OptionSummary selectedOptions={selectedOptions} />
+            </div>
           )}
         </div>
       </div>
