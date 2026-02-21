@@ -55,18 +55,10 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         setFormData({ ...formData, [name]: value });
 
         let fieldError = null;
-        if (name === "firstName") {
-            fieldError = validateName(value, "First name");
-        }
-        if (name === "lastName") {
-            fieldError = validateName(value, "Last name");
-        }
-        if (name === "email") {
-            fieldError = validateEmail(value);
-        }
-        if (name === "password") {
-            fieldError = validatePassword(value);
-        }
+        if (name === "firstName") fieldError = validateName(value, "First name");
+        if (name === "lastName") fieldError = validateName(value, "Last name");
+        if (name === "email") fieldError = validateEmail(value);
+        if (name === "password") fieldError = validatePassword(value);
         if (name === "confirmPassword")
             fieldError = value !== formData.password ? "Passwords do not match" : null;
 
@@ -133,12 +125,6 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
         if (e.key === "Enter") handleRegister();
     };
 
-    const errorStyle = {
-        color: "#ff4d6d",
-        fontSize: "0.85rem",
-        marginTop: "6px",
-    };
-
     return (
         <div className="registration-container">
             <div className="registration-card">
@@ -178,7 +164,7 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                                     onKeyPress={handleKeyPress}
                                 />
                             </div>
-                            {errors.firstName && <p style={errorStyle}>{errors.firstName}</p>}
+                            <p className="field-error">{errors.firstName || ""}</p>
                         </div>
 
                         <div className="form-group form-group-half">
@@ -193,7 +179,7 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                                     onKeyPress={handleKeyPress}
                                 />
                             </div>
-                            {errors.lastName && <p style={errorStyle}>{errors.lastName}</p>}
+                            <p className="field-error">{errors.lastName || ""}</p>
                         </div>
                     </div>
 
@@ -209,7 +195,7 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                                 onKeyPress={handleKeyPress}
                             />
                         </div>
-                        {errors.email && <p style={errorStyle}>{errors.email}</p>}
+                        <p className="field-error">{errors.email || ""}</p>
                     </div>
 
                     <div className="form-group">
@@ -231,7 +217,7 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                                 {showPassword ? <EyeOff /> : <Eye />}
                             </button>
                         </div>
-                        {errors.password && <p style={errorStyle}>{errors.password}</p>}
+                        <p className="field-error">{errors.password || ""}</p>
                     </div>
 
                     <div className="form-group">
@@ -248,16 +234,12 @@ const Registration = ({ onBack, onLogin, onRegistrationSuccess }) => {
                             <button
                                 type="button"
                                 className="password-toggle"
-                                onClick={() =>
-                                    setShowConfirmPassword(!showConfirmPassword)
-                                }
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                             >
                                 {showConfirmPassword ? <EyeOff /> : <Eye />}
                             </button>
                         </div>
-                        {errors.confirmPassword && (
-                            <p style={errorStyle}>{errors.confirmPassword}</p>
-                        )}
+                        <p className="field-error">{errors.confirmPassword || ""}</p>
                     </div>
 
                     <button
