@@ -54,3 +54,7 @@ venv
 *.sln
 *.sw?
 server.conf.txt
+*.md
+.github
+.idea
+runtime
