@@ -1,0 +1,434 @@
+{
+  "repo_url": "/home/mahfuj/PycharmProjects/SPL_Evaluator",
+  "repo_owners": [
+    "Mahfuj-1505",
+    "Mahfuj's Laptop",
+    "Noshin"
+  ],
+  "files": [
+    {
+      "path": "frontend/src/ResultPage.jsx",
+      "lines": 83,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "App"
+      ],
+      "classes": [],
+      "variables": [
+        "mounted"
+      ]
+    },
+    {
+      "path": "backend/main.py",
+      "lines": 48,
+      "owner_contribution": 1.0,
+      "extension": ".py",
+      "language": "python",
+      "functions": [
+        "chat",
+        "root"
+      ],
+      "classes": [
+        "ChatRequest"
+      ],
+      "variables": [
+        "app",
+        "allow_origins",
+        "allow_credentials",
+        "allow_methods",
+        "allow_headers",
+        "response",
+        "port"
+      ]
+    },
+    {
+      "path": "frontend/eslint.config.js",
+      "lines": 29,
+      "owner_contribution": 1.0,
+      "extension": ".js",
+      "language": "javascript",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/api.js",
+      "lines": 71,
+      "owner_contribution": 1.0,
+      "extension": ".js",
+      "language": "javascript",
+      "functions": [
+        "fetchMetrics"
+      ],
+      "classes": [],
+      "variables": [
+        "api",
+        "mock"
+      ]
+    },
+    {
+      "path": "frontend/src/components/MetricCard.jsx",
+      "lines": 30,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "MetricCard"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/ChatBox.jsx",
+      "lines": 357,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "ChatBox",
+        "scrollToBottom",
+        "handleResize",
+        "typeText",
+        "handleSubmit",
+        "handleStop",
+        "autosize"
+      ],
+      "classes": [],
+      "variables": [
+        "ChatBox",
+        "messagesEndRef",
+        "messagesContainerRef",
+        "textareaRef",
+        "controllerRef",
+        "streamingCancelledRef",
+        "scrollToBottom",
+        "container",
+        "handleResize",
+        "typeText",
+        "index",
+        "interval",
+        "handleSubmit",
+        "messageToSend",
+        "userMessage",
+        "controller",
+        "backendBaseURL",
+        "res",
+        "data",
+        "responseText",
+        "result",
+        "aiMessage",
+        "handleStop",
+        "autosize",
+        "ta",
+        "max",
+        "newH"
+      ]
+    },
+    {
+      "path": "frontend/src/App.jsx",
+      "lines": 17,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "App"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/AIUsageGauge.jsx",
+      "lines": 38,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "AIUsageGauge"
+      ],
+      "classes": [],
+      "variables": [
+        "pct"
+      ]
+    },
+    {
+      "path": "frontend/package.json",
+      "lines": 32,
+      "owner_contribution": 1.0,
+      "extension": ".json",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/ComplexityTreemap.jsx",
+      "lines": 31,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "ComplexityTreemap"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "backend/model_server.py",
+      "lines": 89,
+      "owner_contribution": 1.0,
+      "extension": ".py",
+      "language": "python",
+      "functions": [
+        "get_response"
+      ],
+      "classes": [],
+      "variables": [
+        "BOT_NAME",
+        "USER_NAME",
+        "msg",
+        "greetings",
+        "responses",
+        "now",
+        "jokes",
+        "default_responses"
+      ]
+    },
+    {
+      "path": "frontend/src/components/NamingQuality.jsx",
+      "lines": 19,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "NamingQuality"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/ResultPage.css",
+      "lines": 56,
+      "owner_contribution": 1.0,
+      "extension": ".css",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/index.html",
+      "lines": 13,
+      "owner_contribution": 1.0,
+      "extension": ".html",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/HomePage.css",
+      "lines": 250,
+      "owner_contribution": 1.0,
+      "extension": ".css",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "backend/gemini_server.py",
+      "lines": 19,
+      "owner_contribution": 1.0,
+      "extension": ".py",
+      "language": "python",
+      "functions": [
+        "get_response"
+      ],
+      "classes": [],
+      "variables": [
+        "GEMINI_API_KEY",
+        "model",
+        "response"
+      ]
+    },
+    {
+      "path": "frontend/src/HomePage.jsx",
+      "lines": 59,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "App",
+        "handleSubmit"
+      ],
+      "classes": [],
+      "variables": [
+        "handleSubmit"
+      ]
+    },
+    {
+      "path": "frontend/src/components/optionSummary.jsx",
+      "lines": 11,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "OptionSummary"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/LOCChar.jsx",
+      "lines": 18,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "LOCChart"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/data/splOptions.js",
+      "lines": 53,
+      "owner_contribution": 1.0,
+      "extension": ".js",
+      "language": "javascript",
+      "functions": [],
+      "classes": [],
+      "variables": [
+        "splOptions"
+      ]
+    },
+    {
+      "path": "frontend/src/components/optionPanel.jsx",
+      "lines": 109,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "OptionPanel",
+        "handleCheck",
+        "handleNext"
+      ],
+      "classes": [],
+      "variables": [
+        "options",
+        "defaultOptions",
+        "handleCheck",
+        "key",
+        "handleNext",
+        "selected"
+      ]
+    },
+    {
+      "path": "frontend/src/components/ChatBox.css",
+      "lines": 506,
+      "owner_contribution": 1.0,
+      "extension": ".css",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/CommitActivity.jsx",
+      "lines": 17,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "CommitActivity"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/metric-card.css",
+      "lines": 189,
+      "owner_contribution": 1.0,
+      "extension": ".css",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/repository.jsx",
+      "lines": 26,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "RepoForm"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "package.json",
+      "lines": 7,
+      "owner_contribution": 1.0,
+      "extension": ".json",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/main.jsx",
+      "lines": 11,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/components/splSelector.jsx",
+      "lines": 17,
+      "owner_contribution": 1.0,
+      "extension": ".jsx",
+      "language": "javascript",
+      "functions": [
+        "SplSelector"
+      ],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/src/index.css",
+      "lines": 204,
+      "owner_contribution": 1.0,
+      "extension": ".css",
+      "language": "unknown",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    },
+    {
+      "path": "frontend/vite.config.js",
+      "lines": 7,
+      "owner_contribution": 1.0,
+      "extension": ".js",
+      "language": "javascript",
+      "functions": [],
+      "classes": [],
+      "variables": []
+    }
+  ],
+  "stats": {
+    "total_files_scanned": 30,
+    "excluded_by_hard_filter": 0,
+    "excluded_by_gitignore": 0,
+    "excluded_generated": 0,
+    "excluded_not_owner_modified": 0,
+    "excluded_wrong_extension": 0,
+    "user_code_files": 30
+  }
+}
