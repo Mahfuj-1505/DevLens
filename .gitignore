@@ -58,3 +58,5 @@ server.conf.txt
 .github
 .idea
 runtime
+__pycache__/
+*.pyc
