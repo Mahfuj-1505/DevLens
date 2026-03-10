@@ -28,3 +28,6 @@ python-dotenv==1.0.0
 
 # AI/ML (Optional - for future features)
 google-generativeai==0.3.2
+
+# Code Analysis
+lizard==1.17.10

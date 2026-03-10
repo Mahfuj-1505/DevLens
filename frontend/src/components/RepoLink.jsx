@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import './RepoLink.css';
+import { analyzeGithubRepo } from '../api';
 
 export default function RepoLink() {
     const [repolink, setRepoLink] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [statusText, setStatusText] = useState('');
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (repolink.trim()) {
-            console.log('Submitted:', repolink);
-            // Handle submission here
+            try {
+                setLoading(true);
+                setStatusText('Running analysis...');
+                const result = await analyzeGithubRepo(repolink.trim());
+                setStatusText(`Done. JSON: ${result.jsonOutputPath}`);
+            } catch (error) {
+                setStatusText(`Failed: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -34,12 +45,13 @@ export default function RepoLink() {
           
                     <button 
                         onClick={handleSubmit}
-                        disabled={!repolink.trim()}
+                        disabled={!repolink.trim() || loading}
                         className={`submit-button ${repolink.trim() ? 'active' : 'disabled'}`}
                     >
                         <ArrowUp className="arrow-icon" />
                     </button>
                 </div>
+                {statusText && <p>{statusText}</p>}
             </div>
         </div>
     );

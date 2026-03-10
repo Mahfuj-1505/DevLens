@@ -1,4 +1,4 @@
-#!/home/mahfuj/PycharmProjects/FastAPIProject/backend/venv/bin/python3
+#!/home/mahfuj/Documents/DevLens/backend/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

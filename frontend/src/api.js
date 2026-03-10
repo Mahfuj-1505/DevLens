@@ -5,6 +5,23 @@ const api = {
 
 export {api};
 
+export async function analyzeGithubRepo(githubUrl) {
+  const response = await fetch(`${api.baseURL}/analysis/github`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ githubUrl }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to analyze repository");
+  }
+
+  return response.json();
+}
+
 
 
 // A minimal API wrapper — currently returns mock data.
