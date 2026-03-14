@@ -20,22 +20,8 @@ def _load_service(folder: str, filename: str, classname: str):
     return getattr(module, classname)
 
 
-@router.get("/commits/count", status_code=status.HTTP_200_OK)
-async def get_commit_count(
-    githubUrl: str = Query(..., description="Public GitHub repository URL")
-):
-    try:
-        CommitCount = _load_service("Commit Quality", "commit_count.py", "CommitCount")
-        service = CommitCount()
-        return service.get_commit_count(githubUrl)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-
-@router.get("/commits/changes", status_code=status.HTTP_200_OK)
-async def get_code_changes(
+@router.get("/commits", status_code=status.HTTP_200_OK)
+async def get_commits(
     githubUrl: str = Query(..., description="Public GitHub repository URL")
 ):
     try:
