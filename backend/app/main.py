@@ -6,7 +6,7 @@ Main application instance with middleware and routes
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import get_settings
-from app.routes import auth, analysis
+from app.routes import auth, analysis, commit
 from app.utils.database import init_db
 
 settings = get_settings()
@@ -34,6 +34,7 @@ async def startup_event():
 # Include routers
 app.include_router(auth.router)
 app.include_router(analysis.router)
+app.include_router(commit.router)
 
 @app.get("/")
 async def root():

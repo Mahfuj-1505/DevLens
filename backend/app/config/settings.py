@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings from environment variables"""
     
     # Database
-    DATABASE_URL: str = "sqlite:///./devlens.db"
+    DATABASE_URL: str = "mysql+pymysql://devlens_db_user:DevlensUser%40pass123@localhost:3306/devlens_db"    
     
     # JWT Security
     SECRET_KEY: str
