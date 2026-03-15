@@ -1,30 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { analyzeCommits, analyzeGithubRepo } from "./api";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
-} from "recharts";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
   selectedOptions?.some((o) => o.toLowerCase().includes(name.toLowerCase()));
-
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload?.length) {
-    return (
-      <div style={{
-        background: "#13132a", border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 6, padding: "8px 12px", fontFamily: "JetBrains Mono, monospace", fontSize: 11
-      }}>
-        <p style={{ color: "#a855f7", marginBottom: 4 }}>{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} style={{ color: p.color }}>{p.name}: {p.value}</p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
 
 function ChatPanel({ width, onResize, commitData, locData }) {
   const [messages, setMessages] = useState([
@@ -200,10 +181,6 @@ export default function ResultPage() {
 
   if (error) return <div className="result-error">Error: {error}</div>;
 
-  const chartData = commitData?.commits?.slice(0, 20).map((c) => ({
-    sha: c.sha, additions: c.additions, deletions: c.deletions,
-  })) || [];
-
   const repoName = repoLink?.replace("https://github.com/", "") || "Repository";
 
   return (
@@ -277,20 +254,63 @@ export default function ResultPage() {
             </div>
           )}
 
-          {showCommits && chartData.length > 0 && (
+          {showCommits && commitData && (
             <div className="metric-card">
-              <h2>Changes Per Commit (last 20)</h2>
-              <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} barGap={2}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="sha" tick={{ fill: "rgba(232,232,240,0.4)", fontSize: 10, fontFamily: "JetBrains Mono" }} />
-                    <YAxis tick={{ fill: "rgba(232,232,240,0.4)", fontSize: 10, fontFamily: "JetBrains Mono" }} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="additions" name="Additions" fill="#4ade80" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="deletions" name="Deletions" fill="#f87171" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <h2>Additions vs Deletions</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                <div style={{ width: 220, height: 220, flexShrink: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Additions", value: commitData.summary.totalAdditions },
+                          { name: "Deletions", value: commitData.summary.totalDeletions },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={90}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        <Cell fill="#4ade80" />
+                        <Cell fill="#f87171" />
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => value.toLocaleString()}
+                        contentStyle={{
+                          background: "rgba(20,10,40,0.95)",
+                          border: "1px solid rgba(168,85,247,0.3)",
+                          borderRadius: 8,
+                          color: "#e9d5ff",
+                          fontFamily: "monospace",
+                          fontSize: 12,
+                        }}
+                      />
+                      <Legend
+                        formatter={(value) => (
+                          <span style={{ color: "#e9d5ff", fontSize: 12 }}>{value}</span>
+                        )}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.7)", textTransform: "uppercase", marginBottom: 4 }}>Total Additions</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#4ade80", fontFamily: "var(--mono)" }}>+{commitData.summary.totalAdditions?.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.7)", textTransform: "uppercase", marginBottom: 4 }}>Total Deletions</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: 700, color: "#f87171", fontFamily: "var(--mono)" }}>-{commitData.summary.totalDeletions?.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.7)", textTransform: "uppercase", marginBottom: 4 }}>Net Change</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#e9d5ff", fontFamily: "var(--mono)" }}>
+                      {(commitData.summary.totalAdditions - commitData.summary.totalDeletions).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
