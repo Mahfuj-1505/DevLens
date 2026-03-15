@@ -1,83 +1,329 @@
-import React, { useEffect, useState } from "react";
-import { fetchMetrics } from "./api";
-import MetricCard from "./components/MetricCard";
-import LOCChart from "./components/LOCChar";
-import ComplexityTreemap from "./components/ComplexityTreemap";
-import CommitActivity from "./components/CommitActivity";
-import AIUsageGauge from "./components/AIUsageGauge";
-import NamingQuality from "./components/NamingQuality";
-import ChatBox from "./components/ChatBox"
-import "./index.css";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { analyzeCommits, analyzeGithubRepo } from "./api";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+} from "recharts";
+import "./ResultPage.css";
 
+// ===== Helpers =====
+const hasOption = (selectedOptions, name) =>
+  selectedOptions?.some((o) => o.toLowerCase().includes(name.toLowerCase()));
 
-export default function App() {
-  const [data, setData] = useState(null);
-  const [owner] = useState("example");
-  const [repo] = useState("demo-repo");
+// ===== Custom Tooltip =====
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload?.length) {
+    return (
+      <div style={{
+        background: "#13132a", border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 6, padding: "8px 12px", fontFamily: "JetBrains Mono, monospace", fontSize: 11
+      }}>
+        <p style={{ color: "#a855f7", marginBottom: 4 }}>{label}</p>
+        {payload.map((p, i) => (
+          <p key={i} style={{ color: p.color }}>{p.name}: {p.value}</p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// ===== Chat Panel =====
+function ChatPanel({ width, onResize, commitData, locData }) {
+  const [messages, setMessages] = useState([
+    { role: "ai", text: "Hi! I can answer questions about this repository's metrics. Ask me anything!" }
+  ]);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
   useEffect(() => {
-    let mounted = true;
-    fetchMetrics({ owner, repo }).then((d) => mounted && setData(d));
-    return () => (mounted = false);
-  }, [owner, repo]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
 
-  if (!data) return <div className="app-shell">Loading metrics…</div>;
+  const onMouseDown = useCallback((e) => {
+    e.preventDefault();
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
-  const { metrics } = data;
+    const onMouseMove = (e) => {
+      const newWidth = window.innerWidth - e.clientX;
+      onResize(Math.max(240, Math.min(newWidth, window.innerWidth * 0.6)));
+    };
+
+    const onMouseUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }, [onResize]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || typing) return;
+    const userMsg = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
+    setTyping(true);
+
+    const context = [
+      commitData && `Repository has ${commitData.totalCommits} commits. Total additions: ${commitData.summary.totalAdditions}, deletions: ${commitData.summary.totalDeletions}.`,
+      locData && `Lines of code: ${locData.summary.totalLoc}. Total files: ${locData.summary.totalFiles}. Languages: ${locData.summary.languages?.join(", ")}.`,
+    ].filter(Boolean).join(" ");
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: `You are a code quality assistant. Repository data: ${context}. Answer concisely.`,
+          messages: [{ role: "user", content: userMsg }],
+        }),
+      });
+      const data = await response.json();
+      const reply = data.content?.[0]?.text || "Sorry, I couldn't get a response.";
+      setMessages((prev) => [...prev, { role: "ai", text: reply }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: "ai", text: "Something went wrong. Please try again." }]);
+    } finally {
+      setTyping(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <h1>Repo Metrics — {data.repo}</h1>
-        <div className="controls">
+    <>
+      <div className="resize-handle" onMouseDown={onMouseDown} />
+      <div className="chat-panel" style={{ width }}>
+        <div className="chat-header">
+          <div className="chat-header-left">
+            <div className="chat-avatar">✦</div>
+            <div className="chat-header-info">
+              <div className="chat-header-title">AI Assistant</div>
+              <div className="chat-header-sub">analyzing repo...</div>
+            </div>
+          </div>
+          <div className="chat-header-status">
+            <div className="status-dot" />
+            <span className="status-label">online</span>
+          </div>
         </div>
+        <div className="chat-messages">
+          {messages.map((msg, i) => (
+            <div key={i} className={`chat-msg ${msg.role}`}>
+              <div className="msg-avatar">{msg.role === "ai" ? "✦" : "U"}</div>
+              <div className="chat-bubble">
+                {msg.text}
+                {i === 0 && msg.role === "ai" && (
+                  <div className="chat-chips">
+                    <span className="chat-chip" onClick={() => setInput("Give me a summary of this repo")}>📊 Summary</span>
+                    <span className="chat-chip" onClick={() => setInput("How is the code quality?")}>🔍 Code quality</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {typing && (
+            <div className="chat-msg ai">
+              <div className="msg-avatar">✦</div>
+              <div className="chat-typing"><span /><span /><span /></div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+        <div className="chat-input-row">
+          <textarea
+            className="chat-input"
+            rows={2}
+            placeholder="Ask about this repo..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button className="chat-send" onClick={sendMessage} disabled={typing || !input.trim()}>↑</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ComingSoon({ title }) {
+  return (
+    <div className="metric-card" style={{ opacity: 0.6 }}>
+      <h2>{title}</h2>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        height: 80, border: "1px dashed rgba(255,255,255,0.2)",
+        borderRadius: 10, color: "#e9d5ff", fontFamily: "var(--mono)",
+        fontSize: "0.78rem", gap: 8
+      }}>
+        🚧 Coming Soon
+      </div>
+    </div>
+  );
+}
+
+export default function ResultPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { repoLink, selectedOptions, isDefault, spl } = location.state || {};
+
+  const [commitData, setCommitData] = useState(null);
+  const [locData, setLocData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [chatWidth, setChatWidth] = useState(340);
+
+  const showCommits = isDefault || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
+  const showLOC = isDefault || hasOption(selectedOptions, "LOC");
+
+  useEffect(() => {
+    if (!repoLink) { navigate("/home"); return; }
+    const requests = [];
+    if (showCommits) requests.push(analyzeCommits(repoLink).then(setCommitData));
+    if (showLOC) requests.push(analyzeGithubRepo(repoLink).then(setLocData));
+    if (!requests.length) { setLoading(false); return; }
+    Promise.all(requests).catch((err) => setError(err.message)).finally(() => setLoading(false));
+  }, [repoLink]);
+
+  if (loading) return (
+    <div className="result-loading">
+      <div className="spinner" />
+      Analyzing repository...
+    </div>
+  );
+
+  if (error) return <div className="result-error">Error: {error}</div>;
+
+  const chartData = commitData?.commits?.slice(0, 20).map((c) => ({
+    sha: c.sha, additions: c.additions, deletions: c.deletions,
+  })) || [];
+
+  const repoName = repoLink?.replace("https://github.com/", "") || "Repository";
+
+  return (
+    <div className="result-shell">
+      <header className="result-header">
+        <h1>Repo Metrics — <span>{repoName}</span></h1>
+        <button className="header-back" onClick={() => navigate("/home")}>← Back</button>
       </header>
 
-      <main className="grid">
-        {/* Left: metrics and overview (about 60-70% width) */}
-        <div className="left">
-          <div className="col-3">
-          <MetricCard title="Lines of Code" value={metrics.loc.total.toLocaleString()} sub={`${metrics.loc.byLang[0].lang} dominant`}>
-            <LOCChart series={metrics.loc.timeseries} />
-          </MetricCard>
+      <div className="result-body">
+        <div className="metrics-panel">
 
-          <MetricCard title="Code Complexity" value={metrics.complexity.totalScore} sub={`${metrics.complexity.byFile.length} files`}>
-            {/* small sparkline using complexity timeseries */}
-            <LOCChart series={metrics.complexity.timeseries.map(t => ({ date: t.date, loc: t.score }))} />
-          </MetricCard>
+          {showLOC && locData && (
+            <div className="metric-card">
+              <h2>Lines of Code</h2>
+              <div className="stat-grid">
+                <div className="stat-item">
+                  <div className="stat-label">Total LOC</div>
+                  <div className="stat-value accent">{locData.summary.totalLoc?.toLocaleString()}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Files</div>
+                  <div className="stat-value">{locData.summary.totalFiles}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Functions</div>
+                  <div className="stat-value">{locData.summary.totalFunctions}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Comments</div>
+                  <div className="stat-value">{locData.summary.totalComments}</div>
+                </div>
+              </div>
+              {locData.summary.languages?.length > 0 && (
+                <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
+                  Languages: {locData.summary.languages.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
 
-          <MetricCard title="Commits" value={metrics.commits.count} sub={`Meaningfulness ${Math.round(metrics.commits.meaningfulnessScore*100)}%`}>
-            <CommitActivity series={metrics.commits.activity} />
-          </MetricCard>
-          </div>
+          {showCommits && commitData && (
+            <div className="metric-card">
+              <h2>Commit Summary</h2>
+              <div className="stat-grid">
+                <div className="stat-item">
+                  <div className="stat-label">Total Commits</div>
+                  <div className="stat-value accent">{commitData.totalCommits}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Total Additions</div>
+                  <div className="stat-value green">+{commitData.summary.totalAdditions?.toLocaleString()}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Total Deletions</div>
+                  <div className="stat-value red">-{commitData.summary.totalDeletions?.toLocaleString()}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Avg +/Commit</div>
+                  <div className="stat-value green">+{commitData.summary.averageAdditionsPerCommit}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Avg -/Commit</div>
+                  <div className="stat-value red">-{commitData.summary.averageDeletionsPerCommit}</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-label">Avg Files/Commit</div>
+                  <div className="stat-value">{commitData.summary.averageFilesChangedPerCommit}</div>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="col-9">
-          <section className="card">
-            <h2>LOC over time</h2>
-            <LOCChart series={metrics.loc.timeseries} />
-          </section>
+          {showCommits && chartData.length > 0 && (
+            <div className="metric-card">
+              <h2>Changes Per Commit (last 20)</h2>
+              <div className="chart-wrap">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="sha" tick={{ fill: "rgba(232,232,240,0.4)", fontSize: 10, fontFamily: "JetBrains Mono" }} />
+                    <YAxis tick={{ fill: "rgba(232,232,240,0.4)", fontSize: 10, fontFamily: "JetBrains Mono" }} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="additions" name="Additions" fill="#4ade80" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="deletions" name="Deletions" fill="#f87171" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
-          <section className="card">
-            <h2>Complexity by file</h2>
-            <ComplexityTreemap items={metrics.complexity.byFile} onDrill={(f)=>alert(`Drill into ${f.path}`)} />
-          </section>
+          {}
+          {isDefault && (
+            <>
+              <ComingSoon title="Code Complexity — Number of Functions" />
+              <ComingSoon title="Code Complexity — Time Complexity" />
+              <ComingSoon title="Code Complexity — Code Duplication" />
+              <ComingSoon title="Commit — Meaningfulness" />
+              <ComingSoon title="Commit — Activity Graph" />
+              <ComingSoon title="AI Generated Code %" />
+              <ComingSoon title="Naming Conventions" />
+            </>
+          )}
 
-          <div style={{ display: "flex", gap: 16 }}>
-            <section className="card" style={{ flex: 1 }}>
-              <AIUsageGauge percent={metrics.aiPercentage} topFiles={[{path: "src/foo.js", score: 0.9}, {path:"src/bar.js", score:0.7}]} />
-            </section>
+          {!showLOC && !showCommits && !isDefault && (
+            <div className="empty-state">No supported options selected.</div>
+          )}
 
-            <section className="card" style={{ flex: 1 }}>
-              <NamingQuality score={metrics.namingQuality.score} items={metrics.namingQuality.byFile} />
-            </section>
-          </div>
-          </div>
         </div>
 
-        {/* Right: chat box (about 30-35% width) */}
-        <div className="right">
-          <ChatBox />
-        </div>
-      </main>
+        <ChatPanel
+          width={chatWidth}
+          onResize={setChatWidth}
+          commitData={commitData}
+          locData={locData}
+        />
+      </div>
     </div>
   );
 }
