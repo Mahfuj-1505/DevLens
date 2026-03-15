@@ -6,11 +6,9 @@ import {
 } from "recharts";
 import "./ResultPage.css";
 
-// ===== Helpers =====
 const hasOption = (selectedOptions, name) =>
   selectedOptions?.some((o) => o.toLowerCase().includes(name.toLowerCase()));
 
-// ===== Custom Tooltip =====
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload?.length) {
     return (
@@ -28,7 +26,6 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-// ===== Chat Panel =====
 function ChatPanel({ width, onResize, commitData, locData }) {
   const [messages, setMessages] = useState([
     { role: "ai", text: "Hi! I can answer questions about this repository's metrics. Ask me anything!" }

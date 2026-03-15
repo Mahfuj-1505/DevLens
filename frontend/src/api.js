@@ -23,15 +23,28 @@ export async function analyzeGithubRepo(githubUrl) {
 }
 
 
+export async function analyzeCommits(githubUrl) {
+  const response = await fetch(
+    `${api.baseURL}/repositories/commits?githubUrl=${encodeURIComponent(githubUrl)}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
-// A minimal API wrapper — currently returns mock data.
-// Replace fetchMetrics() with a real call to your backend that returns
-// the aggregated JSON described in the README.
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to analyze commits");
+  }
+
+  return response.json();
+}
+
 export async function fetchMetrics({ owner, repo, branch, from, to }) {
-  // Simulate network delay
   await new Promise((r) => setTimeout(r, 400));
 
-  // Mock data (trimmed)
   const mock = {
     repo: `${owner}/${repo}`,
     timeRange: { from: from || "2025-09-01", to: to || "2025-10-26" },
