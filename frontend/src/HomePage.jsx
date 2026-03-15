@@ -47,6 +47,7 @@ function App() {
                     spl={selectedSpl}
                     setShowSummary={setShowSummary}
                     setSelectedOptions={setSelectedOptions}
+                    repoLink={repoLink}
                   />
                 </div>
               )}

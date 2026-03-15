@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import splOptions from "./data/splOptions";
-import {Link} from "react-router-dom"
-export default function OptionPanel({ spl, setShowSummary, setSelectedOptions }) {
+import { useNavigate } from "react-router-dom";
+
+export default function OptionPanel({ spl, setShowSummary, setSelectedOptions, repoLink }) {
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [checked, setChecked] = useState({});
   const [mode, setMode] = useState(null);
+  const navigate = useNavigate();
 
   const options = splOptions[spl] || [];
   const defaultOptions = ["LOC", "Code Complexity", "Commit Activity"];
@@ -16,15 +18,25 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions })
     });
   };
 
-  const handleNext = () => {
-    const selected = Object.keys(checked).filter((key) => checked[key]);
-    setSelectedOptions(selected.length > 0 ? selected : defaultOptions);
-    setShowSummary(true);
+  const handleNext = (selected, isDefault = false) => {
+    if (!repoLink || repoLink.trim() === "") {
+      alert("Please enter a GitHub repository URL first!");
+      return;
+    }
+    setSelectedOptions(selected);
+    navigate("/result-page", {
+      state: {
+        repoLink: repoLink.trim(),
+        selectedOptions: selected,
+        isDefault,
+        spl,
+      },
+    });
   };
 
   return (
     <div style={{ display: "flex", width: "100%", height: "100%", gap: "24px" }}>
-     <div className="flow-section fade-in" style={{ flex: "0 0 160px", borderRight: "1px solid rgba(255,255,255,0.15)", paddingRight: "24px" }}>
+      <div className="flow-section fade-in" style={{ flex: "0 0 160px", borderRight: "1px solid rgba(255,255,255,0.15)", paddingRight: "24px" }}>
         {["Default Option", "Advanced Option"].map((opt) => (
           <button
             key={opt}
@@ -43,7 +55,7 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions })
               <p>Preselected Options:</p>
               <span>{defaultOptions.join(", ")}</span>
               <br />
-              <button className="generate_summary" onClick={handleNext}>
+              <button className="generate_summary" onClick={() => handleNext(defaultOptions, true)}>
                 Generate Summary
               </button>
             </div>
@@ -94,10 +106,15 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions })
                   )
                 )}
               </ul>
-              <button className="generate_summary" onClick={handleNext}>
+              <button
+                className="generate_summary"
+                onClick={() => {
+                  const selected = Object.keys(checked).filter((key) => checked[key]);
+                  handleNext(selected.length > 0 ? selected : defaultOptions);
+                }}
+              >
                 Generate Summary
               </button>
-              <Link to="/result-page" >Generate Summary</Link>
             </div>
           )}
         </div>
