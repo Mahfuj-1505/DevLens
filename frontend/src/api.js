@@ -22,6 +22,22 @@ export async function analyzeGithubRepo(githubUrl) {
   return response.json();
 }
 
+export async function analyzeHeatmap(githubUrl) {
+  const response = await fetch(
+    `${api.baseURL}/repositories/heatmap?githubUrl=${encodeURIComponent(githubUrl)}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch heatmap");
+  }
+
+  return response.json();
+}
 
 export async function analyzeCommits(githubUrl) {
   const response = await fetch(

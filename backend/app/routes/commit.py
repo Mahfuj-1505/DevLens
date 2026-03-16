@@ -32,3 +32,20 @@ async def get_commits(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+@router.get("/heatmap", status_code=status.HTTP_200_OK)
+async def get_file_heatmap(
+    githubUrl: str = Query(..., description="Public GitHub repository URL")
+):
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        service_path = os.path.join(base_dir, "..", "..", "features", "spl2", "Code_Churn","file_change_heatmap.py")
+        spec = importlib.util.spec_from_file_location("file_change_heatmap", service_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        service = module.FileChangeHeatmap()
+        return service.get_heatmap(githubUrl)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

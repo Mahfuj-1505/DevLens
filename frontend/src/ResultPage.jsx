@@ -1,11 +1,77 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { analyzeCommits, analyzeGithubRepo } from "./api";
+import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
   selectedOptions?.some((o) => o.toLowerCase().includes(name.toLowerCase()));
+
+function HeatmapGrid({ files }) {
+  const [hovered, setHovered] = React.useState(null);
+  const maxChanges = files[0]?.changes || 1;
+  const SIZE = 620;
+  const CENTER = SIZE / 2;
+  const OUTER_R = CENTER - 10;
+
+  const bubbles = files.slice(0, 20).map((f, i) => {
+    const color = f.color;
+    const minR = 22;
+    const maxR = 58;
+    const r = Math.round(minR + ((f.changes / maxChanges) * (maxR - minR)));
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const angle = i * golden;
+    const radiusFraction = Math.sqrt((i + 0.5) / files.length);
+    const spread = radiusFraction * (OUTER_R - maxR - 12);
+    const x = CENTER + spread * Math.cos(angle);
+    const y = CENTER + spread * Math.sin(angle);
+    return { ...f, color, r, x, y, i };
+  });
+
+  const sorted = [...bubbles].sort((a, b) => a.heat - b.heat);
+
+  return (
+    <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", padding: "8px 0", marginBottom: 40 }}>
+      <svg width={SIZE} height={SIZE} style={{ overflow: "visible" }}>
+        <circle cx={CENTER} cy={CENTER} r={OUTER_R} fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
+        <circle cx={CENTER} cy={CENTER} r={OUTER_R * 0.66} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="4 6" />
+        <circle cx={CENTER} cy={CENTER} r={OUTER_R * 0.33} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="4 6" />
+
+        {sorted.filter(b => hovered?.i !== b.i).map((b) => (
+          <g key={b.i} transform={`translate(${b.x}, ${b.y})`} onMouseEnter={() => setHovered(b)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer" }}>
+            <circle r={b.r} fill={b.color} opacity={0.78} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+            {b.r >= 28 && (
+              <text textAnchor="middle" dy="3" fontSize={7} fill="rgba(0,0,0,0.85)" fontFamily="monospace" fontWeight="700" style={{ pointerEvents: "none" }}>
+                {(() => { const fname = b.file.split("/").pop(); return fname.length > 9 ? fname.slice(0, 7) + "…" : fname; })()}
+              </text>
+            )}
+          </g>
+        ))}
+
+        {sorted.filter(b => hovered?.i === b.i).map((b) => (
+          <g key={b.i} transform={`translate(${b.x}, ${b.y})`} onMouseEnter={() => setHovered(b)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer" }}>
+            <circle r={b.r * 1.6 + 20} fill={b.color} opacity={0.08} />
+            <circle r={b.r * 1.6 + 10} fill={b.color} opacity={0.14} />
+            <circle r={b.r * 1.6 + 4} fill={b.color} opacity={0.22} />
+            <circle r={b.r * 1.6} fill={b.color} opacity={0.97} stroke="white" strokeWidth={2} strokeOpacity={0.6} style={{ filter: `drop-shadow(0 0 8px ${b.color})` }} />
+            <text textAnchor="middle" dy="-5" fontSize={10} fill="rgba(0,0,0,0.9)" fontFamily="monospace" fontWeight="700" style={{ pointerEvents: "none" }}>
+              {(() => { const fname = b.file.split("/").pop(); return fname.length > 9 ? fname.slice(0, 7) + "…" : fname; })()}
+            </text>
+            <text textAnchor="middle" dy="9" fontSize={10} fill="rgba(0,0,0,0.8)" fontFamily="monospace" fontWeight="700" style={{ pointerEvents: "none" }}>
+              {b.changes}x
+            </text>
+          </g>
+        ))}
+      </svg>
+      {hovered && (
+        <div style={{ position: "absolute", bottom: -8, left: "50%", transform: "translateX(-50%)", padding: "6px 14px", background: "rgba(10,0,30,0.92)", border: `1px solid ${hovered.color}`, borderRadius: 8, fontFamily: "monospace", fontSize: "0.72rem", color: "#e9d5ff", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 10 }}>
+          <span style={{ color: hovered.color, fontWeight: 700 }}>{hovered.file}</span>
+          {" "}— <span style={{ color: "#facc15", fontWeight: 700 }}>{hovered.changes}</span> changes
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ChatPanel({ width, onResize, commitData, locData }) {
   const [messages, setMessages] = useState([
@@ -23,19 +89,16 @@ function ChatPanel({ width, onResize, commitData, locData }) {
     e.preventDefault();
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
-
     const onMouseMove = (e) => {
       const newWidth = window.innerWidth - e.clientX;
       onResize(Math.max(240, Math.min(newWidth, window.innerWidth * 0.6)));
     };
-
     const onMouseUp = () => {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
   }, [onResize]);
@@ -46,12 +109,10 @@ function ChatPanel({ width, onResize, commitData, locData }) {
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setTyping(true);
-
     const context = [
       commitData && `Repository has ${commitData.totalCommits} commits. Total additions: ${commitData.summary.totalAdditions}, deletions: ${commitData.summary.totalDeletions}.`,
       locData && `Lines of code: ${locData.summary.totalLoc}. Total files: ${locData.summary.totalFiles}. Languages: ${locData.summary.languages?.join(", ")}.`,
     ].filter(Boolean).join(" ");
-
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -118,14 +179,7 @@ function ChatPanel({ width, onResize, commitData, locData }) {
           <div ref={messagesEndRef} />
         </div>
         <div className="chat-input-row">
-          <textarea
-            className="chat-input"
-            rows={2}
-            placeholder="Ask about this repo..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
+          <textarea className="chat-input" rows={2} placeholder="Ask about this repo..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} />
           <button className="chat-send" onClick={sendMessage} disabled={typing || !input.trim()}>↑</button>
         </div>
       </div>
@@ -137,12 +191,7 @@ function ComingSoon({ title }) {
   return (
     <div className="metric-card" style={{ opacity: 0.6 }}>
       <h2>{title}</h2>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        height: 80, border: "1px dashed rgba(255,255,255,0.2)",
-        borderRadius: 10, color: "#e9d5ff", fontFamily: "var(--mono)",
-        fontSize: "0.78rem", gap: 8
-      }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 80, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, color: "#e9d5ff", fontFamily: "var(--mono)", fontSize: "0.78rem", gap: 8 }}>
         🚧 Coming Soon
       </div>
     </div>
@@ -156,18 +205,21 @@ export default function ResultPage() {
 
   const [commitData, setCommitData] = useState(null);
   const [locData, setLocData] = useState(null);
+  const [heatmapData, setHeatmapData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chatWidth, setChatWidth] = useState(340);
 
   const showCommits = isDefault || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
   const showLOC = isDefault || hasOption(selectedOptions, "LOC");
+  const showHeatmap = isDefault || hasOption(selectedOptions, "File change heatmap");
 
   useEffect(() => {
     if (!repoLink) { navigate("/home"); return; }
     const requests = [];
     if (showCommits) requests.push(analyzeCommits(repoLink).then(setCommitData));
     if (showLOC) requests.push(analyzeGithubRepo(repoLink).then(setLocData));
+    if (showHeatmap) requests.push(analyzeHeatmap(repoLink).then(setHeatmapData));
     if (!requests.length) { setLoading(false); return; }
     Promise.all(requests).catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, [repoLink]);
@@ -197,22 +249,10 @@ export default function ResultPage() {
             <div className="metric-card">
               <h2>Lines of Code</h2>
               <div className="stat-grid">
-                <div className="stat-item">
-                  <div className="stat-label">Total LOC</div>
-                  <div className="stat-value accent">{locData.summary.totalLoc?.toLocaleString()}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Files</div>
-                  <div className="stat-value">{locData.summary.totalFiles}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Functions</div>
-                  <div className="stat-value">{locData.summary.totalFunctions}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Comments</div>
-                  <div className="stat-value">{locData.summary.totalComments}</div>
-                </div>
+                <div className="stat-item"><div className="stat-label">Total LOC</div><div className="stat-value accent">{locData.summary.totalLoc?.toLocaleString()}</div></div>
+                <div className="stat-item"><div className="stat-label">Files</div><div className="stat-value">{locData.summary.totalFiles}</div></div>
+                <div className="stat-item"><div className="stat-label">Functions</div><div className="stat-value">{locData.summary.totalFunctions}</div></div>
+                <div className="stat-item"><div className="stat-label">Comments</div><div className="stat-value">{locData.summary.totalComments}</div></div>
               </div>
               {locData.summary.languages?.length > 0 && (
                 <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
@@ -226,30 +266,12 @@ export default function ResultPage() {
             <div className="metric-card">
               <h2>Commit Summary</h2>
               <div className="stat-grid">
-                <div className="stat-item">
-                  <div className="stat-label">Total Commits</div>
-                  <div className="stat-value accent">{commitData.totalCommits}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Total Additions</div>
-                  <div className="stat-value green">+{commitData.summary.totalAdditions?.toLocaleString()}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Total Deletions</div>
-                  <div className="stat-value red">-{commitData.summary.totalDeletions?.toLocaleString()}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Avg +/Commit</div>
-                  <div className="stat-value green">+{commitData.summary.averageAdditionsPerCommit}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Avg -/Commit</div>
-                  <div className="stat-value red">-{commitData.summary.averageDeletionsPerCommit}</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-label">Avg Files/Commit</div>
-                  <div className="stat-value">{commitData.summary.averageFilesChangedPerCommit}</div>
-                </div>
+                <div className="stat-item"><div className="stat-label">Total Commits</div><div className="stat-value accent">{commitData.totalCommits}</div></div>
+                <div className="stat-item"><div className="stat-label">Total Additions</div><div className="stat-value green">+{commitData.summary.totalAdditions?.toLocaleString()}</div></div>
+                <div className="stat-item"><div className="stat-label">Total Deletions</div><div className="stat-value red">-{commitData.summary.totalDeletions?.toLocaleString()}</div></div>
+                <div className="stat-item"><div className="stat-label">Avg +/Commit</div><div className="stat-value green">+{commitData.summary.averageAdditionsPerCommit}</div></div>
+                <div className="stat-item"><div className="stat-label">Avg -/Commit</div><div className="stat-value red">-{commitData.summary.averageDeletionsPerCommit}</div></div>
+                <div className="stat-item"><div className="stat-label">Avg Files/Commit</div><div className="stat-value">{commitData.summary.averageFilesChangedPerCommit}</div></div>
               </div>
             </div>
           )}
@@ -261,37 +283,12 @@ export default function ResultPage() {
                 <div style={{ width: 220, height: 220, flexShrink: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Additions", value: commitData.summary.totalAdditions },
-                          { name: "Deletions", value: commitData.summary.totalDeletions },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={55}
-                        outerRadius={90}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
+                      <Pie data={[{ name: "Additions", value: commitData.summary.totalAdditions }, { name: "Deletions", value: commitData.summary.totalDeletions }]} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value">
                         <Cell fill="#4ade80" />
                         <Cell fill="#f87171" />
                       </Pie>
-                      <Tooltip
-                        formatter={(value) => value.toLocaleString()}
-                        contentStyle={{
-                          background: "rgba(20,10,40,0.95)",
-                          border: "1px solid rgba(168,85,247,0.3)",
-                          borderRadius: 8,
-                          color: "#e9d5ff",
-                          fontFamily: "monospace",
-                          fontSize: 12,
-                        }}
-                      />
-                      <Legend
-                        formatter={(value) => (
-                          <span style={{ color: "#e9d5ff", fontSize: 12 }}>{value}</span>
-                        )}
-                      />
+                      <Tooltip formatter={(value) => value.toLocaleString()} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 12 }} />
+                      <Legend formatter={(value) => <span style={{ color: "#e9d5ff", fontSize: 12 }}>{value}</span>} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -306,16 +303,25 @@ export default function ResultPage() {
                   </div>
                   <div>
                     <div style={{ fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.7)", textTransform: "uppercase", marginBottom: 4 }}>Net Change</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#e9d5ff", fontFamily: "var(--mono)" }}>
-                      {(commitData.summary.totalAdditions - commitData.summary.totalDeletions).toLocaleString()}
-                    </div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#e9d5ff", fontFamily: "var(--mono)" }}>{(commitData.summary.totalAdditions - commitData.summary.totalDeletions).toLocaleString()}</div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {}
+          {showHeatmap && heatmapData && (
+            <div className="metric-card" style={{ paddingBottom: 48 }}>
+              <h2>File Change Heatmap</h2>
+              <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", marginBottom: 16 }}>
+                {heatmapData.totalUniqueFiles} unique files — showing top {Math.min(heatmapData.files.length, 20)} most changed
+              </p>
+              <HeatmapGrid files={heatmapData.files.slice(0, 20)} />
+              <div style={{ display: "flex", gap: 20, marginTop: 14, fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.5)", justifyContent: "center" }}>
+              </div>
+            </div>
+          )}
+
           {isDefault && (
             <>
               <ComingSoon title="Code Complexity — Number of Functions" />
@@ -328,18 +334,13 @@ export default function ResultPage() {
             </>
           )}
 
-          {!showLOC && !showCommits && !isDefault && (
+          {!showLOC && !showCommits && !showHeatmap && !isDefault && (
             <div className="empty-state">No supported options selected.</div>
           )}
 
         </div>
 
-        <ChatPanel
-          width={chatWidth}
-          onResize={setChatWidth}
-          commitData={commitData}
-          locData={locData}
-        />
+        <ChatPanel width={chatWidth} onResize={setChatWidth} commitData={commitData} locData={locData} />
       </div>
     </div>
   );
