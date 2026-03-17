@@ -115,3 +115,27 @@ export async function fetchMetrics({ owner, repo, branch, from, to }) {
 
   return mock;
 }
+
+export async function analyzeOwnership(githubUrl) {
+  const response = await fetch(
+    `${api.baseURL}/repositories/ownership?githubUrl=${encodeURIComponent(githubUrl)}`,
+    { method: "GET", headers: { "Content-Type": "application/json" } }
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch ownership data");
+  }
+  return response.json();
+}
+
+export async function analyzeIssues(githubUrl) {
+  const response = await fetch(
+    `${api.baseURL}/repositories/issues?githubUrl=${encodeURIComponent(githubUrl)}`,
+    { method: "GET", headers: { "Content-Type": "application/json" } }
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch issues data");
+  }
+  return response.json();
+}

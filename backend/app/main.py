@@ -1,12 +1,11 @@
 """
 DevLens FastAPI Application
-Main application instance with middleware and routes
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import get_settings
-from app.routes import auth, analysis, commit
+from app.routes import auth, analysis, commit, issue_tracking
 from app.utils.database import init_db
 
 settings = get_settings()
@@ -17,7 +16,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware - MUST be before routes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -26,23 +24,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database
 @app.on_event("startup")
 async def startup_event():
     init_db()
 
-# Include routers
 app.include_router(auth.router)
 app.include_router(analysis.router)
 app.include_router(commit.router)
+app.include_router(issue_tracking.router)
 
 @app.get("/")
 async def root():
-    return {
-        "message": "DevLens API is running",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    return {"message": "DevLens API is running", "version": "1.0.0", "docs": "/docs"}
 
 @app.get("/health")
 async def health_check():

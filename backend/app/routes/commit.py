@@ -49,3 +49,20 @@ async def get_file_heatmap(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
+@router.get("/ownership", status_code=status.HTTP_200_OK)
+async def get_code_ownership(
+    githubUrl: str = Query(..., description="Public GitHub repository URL")
+):
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        service_path = os.path.join(base_dir, "..", "..", "features", "spl2", "Code_Churn", "code_ownership.py")
+        spec = importlib.util.spec_from_file_location("code_ownership", service_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        service = module.CodeOwnership()
+        return service.get_ownership(githubUrl)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

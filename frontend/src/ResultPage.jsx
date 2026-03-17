@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap } from "./api";
+import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
   selectedOptions?.some((o) => o.toLowerCase().includes(name.toLowerCase()));
+
+const OWNERSHIP_COLORS = ["#a855f7", "#f87171", "#4ade80", "#facc15", "#60a5fa", "#fb923c", "#34d399", "#e879f9"];
 
 function HeatmapGrid({ files }) {
   const [hovered, setHovered] = React.useState(null);
@@ -206,6 +208,8 @@ export default function ResultPage() {
   const [commitData, setCommitData] = useState(null);
   const [locData, setLocData] = useState(null);
   const [heatmapData, setHeatmapData] = useState(null);
+  const [ownershipData, setOwnershipData] = useState(null);
+  const [issuesData, setIssuesData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chatWidth, setChatWidth] = useState(340);
@@ -213,6 +217,8 @@ export default function ResultPage() {
   const showCommits = isDefault || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
   const showLOC = isDefault || hasOption(selectedOptions, "LOC");
   const showHeatmap = isDefault || hasOption(selectedOptions, "File change heatmap");
+  const showOwnership = isDefault || hasOption(selectedOptions, "Code Ownership") || hasOption(selectedOptions, "Code ownership");
+  const showIssues = isDefault || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
 
   useEffect(() => {
     if (!repoLink) { navigate("/home"); return; }
@@ -220,6 +226,8 @@ export default function ResultPage() {
     if (showCommits) requests.push(analyzeCommits(repoLink).then(setCommitData));
     if (showLOC) requests.push(analyzeGithubRepo(repoLink).then(setLocData));
     if (showHeatmap) requests.push(analyzeHeatmap(repoLink).then(setHeatmapData));
+    if (showOwnership) requests.push(analyzeOwnership(repoLink).then(setOwnershipData));
+    if (showIssues) requests.push(analyzeIssues(repoLink).then(setIssuesData));
     if (!requests.length) { setLoading(false); return; }
     Promise.all(requests).catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, [repoLink]);
@@ -310,6 +318,93 @@ export default function ResultPage() {
             </div>
           )}
 
+          {showOwnership && ownershipData && (
+            <div className="metric-card">
+              <h2>Code Ownership</h2>
+              <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", marginBottom: 16 }}>
+                {ownershipData.totalContributors} contributors — {ownershipData.totalCommits} total commits
+              </p>
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>By Commits</p>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={ownershipData.contributors.slice(0, 6).map(c => ({ name: c.author, value: c.commits }))}
+                        cx="50%" cy="50%" outerRadius={85} dataKey="value" paddingAngle={2}>
+                        {ownershipData.contributors.slice(0, 6).map((_, i) => (
+                          <Cell key={i} fill={OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v, n) => [`${v} commits`, n]} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 11 }} />
+                      <Legend formatter={(v) => <span style={{ color: "#e9d5ff", fontSize: 11 }}>{v.length > 14 ? v.slice(0, 12) + "…" : v}</span>} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>By Lines Added</p>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={ownershipData.contributors.slice(0, 6).map(c => ({ name: c.author, value: c.linesAdded }))}
+                        cx="50%" cy="50%" outerRadius={85} dataKey="value" paddingAngle={2}>
+                        {ownershipData.contributors.slice(0, 6).map((_, i) => (
+                          <Cell key={i} fill={OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v, n) => [`${v.toLocaleString()} lines`, n]} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 11 }} />
+                      <Legend formatter={(v) => <span style={{ color: "#e9d5ff", fontSize: 11 }}>{v.length > 14 ? v.slice(0, 12) + "…" : v}</span>} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showIssues && issuesData && (
+            <div className="metric-card">
+              <h2>Issue Tracking</h2>
+              <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", marginBottom: 16 }}>
+                {issuesData.totalIssues} total issues — {issuesData.openIssues} open, {issuesData.closedIssues} closed
+              </p>
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                <div style={{ flex: "0 0 220px" }}>
+                  <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Open vs Closed</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Open", value: issuesData.openIssues },
+                          { name: "Closed", value: issuesData.closedIssues },
+                        ]}
+                        cx="50%" cy="50%" outerRadius={80} dataKey="value" paddingAngle={3}
+                      >
+                        <Cell fill="#f87171" />
+                        <Cell fill="#4ade80" />
+                      </Pie>
+                      <Tooltip formatter={(v, n) => [`${v} (${n === "Open" ? issuesData.openRatio : issuesData.closedRatio}%)`, n]} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 11 }} />
+                      <Legend formatter={(v) => <span style={{ color: "#e9d5ff", fontSize: 12 }}>{v}</span>} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                {issuesData.labels.length > 0 && (
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.08em" }}>Labels</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {issuesData.labels.slice(0, 8).map((l, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ fontSize: "0.72rem", fontFamily: "var(--mono)", color: "#e9d5ff", width: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.label}</div>
+                          <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 3 }}>
+                            <div style={{ width: `${(l.count / issuesData.labels[0].count) * 100}%`, height: "100%", background: OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length], borderRadius: 3 }} />
+                          </div>
+                          <div style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length], fontWeight: 700, width: 24, textAlign: "right" }}>{l.count}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {showHeatmap && heatmapData && (
             <div className="metric-card" style={{ paddingBottom: 48 }}>
               <h2>File Change Heatmap</h2>
@@ -318,6 +413,9 @@ export default function ResultPage() {
               </p>
               <HeatmapGrid files={heatmapData.files.slice(0, 20)} />
               <div style={{ display: "flex", gap: 20, marginTop: 14, fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.5)", justifyContent: "center" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#4ade80", display: "inline-block" }} /> Low frequency</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#facc15", display: "inline-block" }} /> Moderate</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#f87171", display: "inline-block" }} /> High frequency</span>
               </div>
             </div>
           )}
@@ -334,7 +432,7 @@ export default function ResultPage() {
             </>
           )}
 
-          {!showLOC && !showCommits && !showHeatmap && !isDefault && (
+          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !isDefault && (
             <div className="empty-state">No supported options selected.</div>
           )}
 

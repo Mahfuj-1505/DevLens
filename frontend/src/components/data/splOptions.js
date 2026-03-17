@@ -22,6 +22,7 @@ const splOptions = {
     "LOC",
     "Code Ownership",
     "SOLID Principle",
+    "Issue Tracking",
     {
       label: "Performance",
       children: ["Query Complexity", "File change heatmap", "Churn rate"],

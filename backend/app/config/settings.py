@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     
+    GITHUB_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
         case_sensitive = False  # Allow lowercase in .env
