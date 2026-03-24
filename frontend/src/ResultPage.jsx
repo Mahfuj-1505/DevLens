@@ -230,32 +230,42 @@ export default function ResultPage() {
     if (showIssues) requests.push(analyzeIssues(repoLink).then(setIssuesData));
     if (showChurn) requests.push(analyzeChurn(repoLink).then(setChurnData));
     if (!requests.length) { setLoading(false); return; }
-    Promise.all(requests).catch((err) => setError(err.message)).finally(() => setLoading(false));
+    Promise.all(requests)
+      .catch((err) => setError(err.message))
+      .finally(() => {
+        setProgress(100);
+        setMsgIndex(loadingMessages.length - 1);
+        setTimeout(() => setLoading(false), 300);
+      });
   }, [repoLink]);
 
   const [progress, setProgress] = React.useState(0);
   const [msgIndex, setMsgIndex] = React.useState(0);
   const cancelledRef = React.useRef(false);
 
-  const loadingMessages = [
-    "Cloning repository...",
-    "Analyzing commit history...",
-    "Counting lines of code...",
-    "Measuring code churn...",
-    "Detecting file changes...",
-    "Checking issue tracker...",
-    "Calculating ownership...",
-    "Almost there...",
-  ];
+  const loadingMessages = React.useMemo(() => {
+    const msgs = ["Cloning repository..."];
+    if (showCommits) msgs.push("Analyzing commit history...", "Counting additions and deletions...");
+    if (showLOC) msgs.push("Counting lines of code...", "Detecting programming languages...");
+    if (showOwnership) msgs.push("Measuring contributor ownership...");
+    if (showIssues) msgs.push("Fetching issues from GitHub...", "Analyzing open and closed issues...");
+    if (showChurn) msgs.push("Calculating code churn rate...", "Finding most rewritten files...");
+    if (showHeatmap) msgs.push("Building file change heatmap...");
+    msgs.push("Processing results...","Collecting all result", "Almost Done!");
+    return msgs;
+  }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showHeatmap]);
 
   React.useEffect(() => {
     if (!loading) return;
+    let i = 0;
+    const totalTime = 3000;
     const interval = setInterval(() => {
-      setProgress((p) => Math.min(p + Math.random() * 8, 92));
-      setMsgIndex((i) => (i + 1) % loadingMessages.length);
-    }, 1800);
+      i++;
+      setMsgIndex((prev) => Math.min(prev + 1, loadingMessages.length - 1));
+      setProgress((p) => Math.min(p + (90 / loadingMessages.length), 92));
+    }, totalTime);
     return () => clearInterval(interval);
-  }, [loading]);
+  }, [loading, loadingMessages]);
 
   const handleCancel = () => {
     cancelledRef.current = true;
@@ -271,7 +281,7 @@ export default function ResultPage() {
       <div style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
         DevLens Analysis
       </div>
-      <div style={{ fontSize: "1rem", color: "#e9d5ff", fontWeight: 600, minHeight: 24, transition: "all 0.3s ease" }}>
+      <div style={{ fontSize: "1rem", color: "#e9d5ff", fontWeight: 600, minHeight: 24, transition: "all 0.5s ease" }}>
         {loadingMessages[msgIndex]}
       </div>
       <div style={{ width: 320, height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
@@ -280,12 +290,25 @@ export default function ResultPage() {
           background: "linear-gradient(90deg, #7c3aed, #a855f7, #7c3aed)",
           backgroundSize: "200% 100%",
           width: `${progress}%`,
-          transition: "width 1.5s ease",
+          transition: "width 2.5s ease",
           animation: "shimmer 2s linear infinite",
         }} />
       </div>
       <div style={{ fontSize: "0.68rem", color: "rgba(233,213,255,0.4)" }}>
         {Math.round(progress)}% complete
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+        {loadingMessages.map((msg, i) => (
+          <div key={i} style={{
+            fontSize: "0.65rem", fontFamily: "var(--mono, monospace)",
+            color: i < msgIndex ? "rgba(233,213,255,0.3)" : i === msgIndex ? "#a855f7" : "rgba(233,213,255,0.15)",
+            display: "flex", alignItems: "center", gap: 8,
+            transition: "color 0.5s ease",
+          }}>
+            <span>{i < msgIndex ? "✓" : i === msgIndex ? "›" : "·"}</span>
+            {msg}
+          </div>
+        ))}
       </div>
       <button
         onClick={handleCancel}
