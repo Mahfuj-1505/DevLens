@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import ReportDownload from "./components/reportDownload";
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
@@ -251,7 +252,7 @@ export default function ResultPage() {
     if (showIssues) msgs.push("Fetching issues from GitHub...", "Analyzing open and closed issues...");
     if (showChurn) msgs.push("Calculating code churn rate...", "Finding most rewritten files...");
     if (showHeatmap) msgs.push("Building file change heatmap...");
-    msgs.push("Processing results...","Collecting all result", "Almost Done!");
+    msgs.push("Processing results...", "Collecting all result", "Almost Done!");
     return msgs;
   }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showHeatmap]);
 
@@ -552,6 +553,16 @@ export default function ResultPage() {
           {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !showChurn && !isDefault && (
             <div className="empty-state">No supported options selected.</div>
           )}
+
+          {/* ✅ Download buttons — bottom of metrics panel */}
+          <ReportDownload
+            repoName={repoName}
+            churnData={churnData}
+            commitData={commitData}
+            locData={locData}
+            ownershipData={ownershipData}
+            issuesData={issuesData}
+          />
 
         </div>
         <ChatPanel width={chatWidth} onResize={setChatWidth} commitData={commitData} locData={locData} />
