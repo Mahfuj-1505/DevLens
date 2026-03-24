@@ -9,7 +9,16 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions, r
   const navigate = useNavigate();
 
   const options = splOptions[spl] || [];
-  const defaultOptions = ["LOC", "Code Complexity", "Commit Activity"];
+
+  const defaultOptions = options.flatMap((opt, index) =>
+    typeof opt === "string"
+      ? [opt]
+      : opt.children.map((child) => `${index}-${child}`)
+  );
+
+  const defaultDisplayList = options.flatMap((opt) =>
+    typeof opt === "string" ? [opt] : opt.children.map((child) => child)
+  );
 
   const handleCheck = (option, isGroup = false, groupIndex = null) => {
     setChecked((prev) => {
@@ -52,9 +61,17 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions, r
         <div className="flow-section card-container fade-in">
           {mode === "Default Option" && (
             <div>
-              <p>Preselected Options:</p>
-              <span>{defaultOptions.join(", ")}</span>
-              <br />
+              <p style={{ marginBottom: 10, fontSize: "0.85rem", opacity: 0.8 }}>
+                All features for {spl}:
+              </p>
+              <ul style={{ listStyle: "none", padding: 0, marginBottom: 16 }}>
+                {defaultDisplayList.map((item, i) => (
+                  <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: "0.85rem" }}>
+                    <span style={{ color: "#a855f7", fontSize: "0.7rem" }}>✦</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
               <button className="generate_summary" onClick={() => handleNext(defaultOptions, true)}>
                 Generate Summary
               </button>

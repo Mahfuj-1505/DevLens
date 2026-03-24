@@ -1,8 +1,15 @@
+/*Added this full part*/
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* 🚨 prevents full page scroll */
+}
+
 .main-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  height: 100vh;/*added this*/
   width: 100vw;
   margin: 0;
   background: linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%);
@@ -22,7 +29,8 @@
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   padding: 40px;
   width: calc(100vw - 150px);   
-  height: calc(100vh - 150px);  
+  /*height: calc(100vh - 150px);  */
+  height: 90vh;/*Added this*/
   max-height: none;            
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -102,7 +110,8 @@
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
-  padding: 0 8px;     
+  padding: 0 8px;    
+  overflow: hidden; /*added this*/
 }
 
 .flow-section-spl {
@@ -116,6 +125,7 @@
   min-width: 0;
   margin-left: 0;
   padding-left: 24px; 
+  min-height: 0;/*added this*/
 }
 
 .flow-section-summary {
