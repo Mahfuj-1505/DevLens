@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues } from "./api";
+import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "./ResultPage.css";
 
@@ -38,7 +38,6 @@ function HeatmapGrid({ files }) {
         <circle cx={CENTER} cy={CENTER} r={OUTER_R} fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth={1.5} />
         <circle cx={CENTER} cy={CENTER} r={OUTER_R * 0.66} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="4 6" />
         <circle cx={CENTER} cy={CENTER} r={OUTER_R * 0.33} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={1} strokeDasharray="4 6" />
-
         {sorted.filter(b => hovered?.i !== b.i).map((b) => (
           <g key={b.i} transform={`translate(${b.x}, ${b.y})`} onMouseEnter={() => setHovered(b)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer" }}>
             <circle r={b.r} fill={b.color} opacity={0.78} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
@@ -49,7 +48,6 @@ function HeatmapGrid({ files }) {
             )}
           </g>
         ))}
-
         {sorted.filter(b => hovered?.i === b.i).map((b) => (
           <g key={b.i} transform={`translate(${b.x}, ${b.y})`} onMouseEnter={() => setHovered(b)} onMouseLeave={() => setHovered(null)} style={{ cursor: "pointer" }}>
             <circle r={b.r * 1.6 + 20} fill={b.color} opacity={0.08} />
@@ -210,6 +208,7 @@ export default function ResultPage() {
   const [heatmapData, setHeatmapData] = useState(null);
   const [ownershipData, setOwnershipData] = useState(null);
   const [issuesData, setIssuesData] = useState(null);
+  const [churnData, setChurnData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [chatWidth, setChatWidth] = useState(340);
@@ -219,6 +218,7 @@ export default function ResultPage() {
   const showHeatmap = isDefault || hasOption(selectedOptions, "File change heatmap");
   const showOwnership = isDefault || hasOption(selectedOptions, "Code Ownership") || hasOption(selectedOptions, "Code ownership");
   const showIssues = isDefault || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
+  const showChurn = isDefault || hasOption(selectedOptions, "Churn rate") || hasOption(selectedOptions, "Churn Rate");
 
   useEffect(() => {
     if (!repoLink) { navigate("/home"); return; }
@@ -228,20 +228,91 @@ export default function ResultPage() {
     if (showHeatmap) requests.push(analyzeHeatmap(repoLink).then(setHeatmapData));
     if (showOwnership) requests.push(analyzeOwnership(repoLink).then(setOwnershipData));
     if (showIssues) requests.push(analyzeIssues(repoLink).then(setIssuesData));
+    if (showChurn) requests.push(analyzeChurn(repoLink).then(setChurnData));
     if (!requests.length) { setLoading(false); return; }
     Promise.all(requests).catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, [repoLink]);
 
+  const [progress, setProgress] = React.useState(0);
+  const [msgIndex, setMsgIndex] = React.useState(0);
+  const cancelledRef = React.useRef(false);
+
+  const loadingMessages = [
+    "Cloning repository...",
+    "Analyzing commit history...",
+    "Counting lines of code...",
+    "Measuring code churn...",
+    "Detecting file changes...",
+    "Checking issue tracker...",
+    "Calculating ownership...",
+    "Almost there...",
+  ];
+
+  React.useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setProgress((p) => Math.min(p + Math.random() * 8, 92));
+      setMsgIndex((i) => (i + 1) % loadingMessages.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  const handleCancel = () => {
+    cancelledRef.current = true;
+    navigate("/home");
+  };
+
   if (loading) return (
-    <div className="result-loading">
-      <div className="spinner" />
-      Analyzing repository...
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      height: "100vh", background: "linear-gradient(135deg, #0f172a 0%, #581c87 50%, #0f172a 100%)",
+      gap: 24, fontFamily: "var(--mono, monospace)",
+    }}>
+      <div style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.5)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+        DevLens Analysis
+      </div>
+      <div style={{ fontSize: "1rem", color: "#e9d5ff", fontWeight: 600, minHeight: 24, transition: "all 0.3s ease" }}>
+        {loadingMessages[msgIndex]}
+      </div>
+      <div style={{ width: 320, height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 4, overflow: "hidden" }}>
+        <div style={{
+          height: "100%", borderRadius: 4,
+          background: "linear-gradient(90deg, #7c3aed, #a855f7, #7c3aed)",
+          backgroundSize: "200% 100%",
+          width: `${progress}%`,
+          transition: "width 1.5s ease",
+          animation: "shimmer 2s linear infinite",
+        }} />
+      </div>
+      <div style={{ fontSize: "0.68rem", color: "rgba(233,213,255,0.4)" }}>
+        {Math.round(progress)}% complete
+      </div>
+      <button
+        onClick={handleCancel}
+        style={{
+          marginTop: 8, padding: "8px 24px",
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          borderRadius: 8, color: "rgba(233,213,255,0.6)",
+          cursor: "pointer", fontSize: "0.78rem",
+          fontFamily: "var(--mono, monospace)",
+          transition: "all 0.2s",
+        }}
+        onMouseEnter={e => { e.target.style.borderColor = "#f87171"; e.target.style.color = "#f87171"; }}
+        onMouseLeave={e => { e.target.style.borderColor = "rgba(255,255,255,0.15)"; e.target.style.color = "rgba(233,213,255,0.6)"; }}
+      >
+        Cancel
+      </button>
+      <style>{`@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }`}</style>
     </div>
   );
 
   if (error) return <div className="result-error">Error: {error}</div>;
 
   const repoName = repoLink?.replace("https://github.com/", "") || "Repository";
+
+  const th = { textAlign: "left", padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", color: "rgba(233,213,255,0.5)", fontSize: "0.65rem", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em" };
+  const td = { padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "0.72rem", fontFamily: "var(--mono)", color: "#e9d5ff" };
 
   return (
     <div className="result-shell">
@@ -292,8 +363,7 @@ export default function ResultPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie data={[{ name: "Additions", value: commitData.summary.totalAdditions }, { name: "Deletions", value: commitData.summary.totalDeletions }]} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value">
-                        <Cell fill="#4ade80" />
-                        <Cell fill="#f87171" />
+                        <Cell fill="#4ade80" /><Cell fill="#f87171" />
                       </Pie>
                       <Tooltip formatter={(value) => value.toLocaleString()} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 12 }} />
                       <Legend formatter={(value) => <span style={{ color: "#e9d5ff", fontSize: 12 }}>{value}</span>} />
@@ -329,11 +399,8 @@ export default function ResultPage() {
                   <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>By Commits</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
-                      <Pie data={ownershipData.contributors.slice(0, 6).map(c => ({ name: c.author, value: c.commits }))}
-                        cx="50%" cy="50%" outerRadius={85} dataKey="value" paddingAngle={2}>
-                        {ownershipData.contributors.slice(0, 6).map((_, i) => (
-                          <Cell key={i} fill={OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length]} />
-                        ))}
+                      <Pie data={ownershipData.contributors.slice(0, 6).map(c => ({ name: c.author, value: c.commits }))} cx="50%" cy="50%" outerRadius={85} dataKey="value" paddingAngle={2}>
+                        {ownershipData.contributors.slice(0, 6).map((_, i) => <Cell key={i} fill={OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length]} />)}
                       </Pie>
                       <Tooltip formatter={(v, n) => [`${v} commits`, n]} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 11 }} />
                       <Legend formatter={(v) => <span style={{ color: "#e9d5ff", fontSize: 11 }}>{v.length > 14 ? v.slice(0, 12) + "…" : v}</span>} />
@@ -344,11 +411,8 @@ export default function ResultPage() {
                   <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>By Lines Added</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
-                      <Pie data={ownershipData.contributors.slice(0, 6).map(c => ({ name: c.author, value: c.linesAdded }))}
-                        cx="50%" cy="50%" outerRadius={85} dataKey="value" paddingAngle={2}>
-                        {ownershipData.contributors.slice(0, 6).map((_, i) => (
-                          <Cell key={i} fill={OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length]} />
-                        ))}
+                      <Pie data={ownershipData.contributors.slice(0, 6).map(c => ({ name: c.author, value: c.linesAdded }))} cx="50%" cy="50%" outerRadius={85} dataKey="value" paddingAngle={2}>
+                        {ownershipData.contributors.slice(0, 6).map((_, i) => <Cell key={i} fill={OWNERSHIP_COLORS[i % OWNERSHIP_COLORS.length]} />)}
                       </Pie>
                       <Tooltip formatter={(v, n) => [`${v.toLocaleString()} lines`, n]} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 11 }} />
                       <Legend formatter={(v) => <span style={{ color: "#e9d5ff", fontSize: 11 }}>{v.length > 14 ? v.slice(0, 12) + "…" : v}</span>} />
@@ -370,15 +434,8 @@ export default function ResultPage() {
                   <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Open vs Closed</p>
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Open", value: issuesData.openIssues },
-                          { name: "Closed", value: issuesData.closedIssues },
-                        ]}
-                        cx="50%" cy="50%" outerRadius={80} dataKey="value" paddingAngle={3}
-                      >
-                        <Cell fill="#f87171" />
-                        <Cell fill="#4ade80" />
+                      <Pie data={[{ name: "Open", value: issuesData.openIssues }, { name: "Closed", value: issuesData.closedIssues }]} cx="50%" cy="50%" outerRadius={80} dataKey="value" paddingAngle={3}>
+                        <Cell fill="#f87171" /><Cell fill="#4ade80" />
                       </Pie>
                       <Tooltip formatter={(v, n) => [`${v} (${n === "Open" ? issuesData.openRatio : issuesData.closedRatio}%)`, n]} contentStyle={{ background: "rgba(20,10,40,0.95)", border: "1px solid rgba(168,85,247,0.3)", borderRadius: 8, color: "#e9d5ff", fontFamily: "monospace", fontSize: 11 }} />
                       <Legend formatter={(v) => <span style={{ color: "#e9d5ff", fontSize: 12 }}>{v}</span>} />
@@ -401,6 +458,43 @@ export default function ResultPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {showChurn && churnData && (
+            <div className="metric-card">
+              <h2>Churn Rate</h2>
+              <div className="stat-grid" style={{ marginBottom: 20 }}>
+                <div className="stat-item"><div className="stat-label">Overall Churn Rate</div><div className="stat-value accent">{churnData.summary.churnRate}%</div></div>
+                <div className="stat-item"><div className="stat-label">Total Additions</div><div className="stat-value green">+{churnData.summary.totalAdditions?.toLocaleString()}</div></div>
+                <div className="stat-item"><div className="stat-label">Total Deletions</div><div className="stat-value red">-{churnData.summary.totalDeletions?.toLocaleString()}</div></div>
+                <div className="stat-item"><div className="stat-label">Net Lines</div><div className="stat-value">{churnData.summary.netLines?.toLocaleString()}</div></div>
+              </div>
+              <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>Top Most Churned Files</p>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>File</th>
+                      <th style={{ ...th, textAlign: "right" }}>Additions</th>
+                      <th style={{ ...th, textAlign: "right" }}>Deletions</th>
+                      <th style={{ ...th, textAlign: "right" }}>Commits</th>
+                      <th style={{ ...th, textAlign: "right" }}>Churn Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {churnData.files.map((f, i) => (
+                      <tr key={i} style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                        <td style={{ ...td, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.file}>{f.file.split("/").pop()}</td>
+                        <td style={{ ...td, textAlign: "right", color: "#4ade80" }}>+{f.additions.toLocaleString()}</td>
+                        <td style={{ ...td, textAlign: "right", color: "#f87171" }}>-{f.deletions.toLocaleString()}</td>
+                        <td style={{ ...td, textAlign: "right" }}>{f.commits}</td>
+                        <td style={{ ...td, textAlign: "right", color: f.churnRate > 80 ? "#f87171" : f.churnRate > 40 ? "#facc15" : "#4ade80", fontWeight: 700 }}>{f.churnRate}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -432,12 +526,11 @@ export default function ResultPage() {
             </>
           )}
 
-          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !isDefault && (
+          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !showChurn && !isDefault && (
             <div className="empty-state">No supported options selected.</div>
           )}
 
         </div>
-
         <ChatPanel width={chatWidth} onResize={setChatWidth} commitData={commitData} locData={locData} />
       </div>
     </div>

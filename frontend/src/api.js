@@ -139,3 +139,15 @@ export async function analyzeIssues(githubUrl) {
   }
   return response.json();
 }
+
+export async function analyzeChurn(githubUrl) {
+  const response = await fetch(
+    `${api.baseURL}/repositories/churn?githubUrl=${encodeURIComponent(githubUrl)}`,
+    { method: "GET", headers: { "Content-Type": "application/json" } }
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch churn data");
+  }
+  return response.json();
+}

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import get_settings
 from app.routes import auth, analysis, commit, issue_tracking
 from app.utils.database import init_db
+from app.routes import auth, analysis, commit, issue_tracking, churn
 
 settings = get_settings()
 
@@ -32,6 +33,7 @@ app.include_router(auth.router)
 app.include_router(analysis.router)
 app.include_router(commit.router)
 app.include_router(issue_tracking.router)
+app.include_router(churn.router)
 
 @app.get("/")
 async def root():
