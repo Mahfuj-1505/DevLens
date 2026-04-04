@@ -11,8 +11,7 @@ export default function ReportDownload({
   const [busy, setBusy] = useState(false);
 
   const now = () => new Date().toLocaleString();
-
-  // ── CSV ────────────────────────────────────────────────────────────────
+  const safeRepoName = repoName?.replace("/", "-") || "repo";
 
   function buildCSV() {
     const rows = [];
@@ -95,15 +94,13 @@ export default function ReportDownload({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `devlens-report-${repoName.replace("/", "-")}.csv`;
+      a.download = `${safeRepoName}-report.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
       setBusy(false);
     }
   }
-
-  // ── PDF ────────────────────────────────────────────────────────────────
 
   function downloadPDF() {
     setBusy(true);
@@ -139,8 +136,8 @@ export default function ReportDownload({
     const churnColor = (rate) =>
       rate > 80 ? "churn-high" : rate > 40 ? "churn-mid" : "churn-low";
 
-    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>DevLens Report</title>${style}</head><body>`;
-    html += `<h1>DevLens Report — ${repoName}</h1>`;
+    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${safeRepoName} Report</title>${style}</head><body>`;
+    html += `<h1>${repoName} — DevLens Report</h1>`;
     html += `<div class="meta">Generated: ${now()}</div>`;
 
     if (locData) {
@@ -221,8 +218,6 @@ export default function ReportDownload({
     };
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────
-
   const hasData = churnData || commitData || locData || ownershipData || issuesData;
   if (!hasData) return null;
 
@@ -246,7 +241,6 @@ export default function ReportDownload({
       <span style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
         Download Report
       </span>
-
       <button
         onClick={downloadPDF}
         disabled={busy}
@@ -256,7 +250,6 @@ export default function ReportDownload({
       >
         ⬇ PDF Report
       </button>
-
       <button
         onClick={downloadCSV}
         disabled={busy}
