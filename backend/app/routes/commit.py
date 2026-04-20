@@ -66,3 +66,29 @@ async def get_code_ownership(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/commit-message-quality", status_code=status.HTTP_200_OK)
+async def get_commit_message_quality(
+    githubUrl: str = Query(..., description="Public GitHub repository URL")
+):
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        service_path = os.path.join(
+            base_dir,
+            "..",
+            "..",
+            "features",
+            "spl2",
+            "Commit_Message_Quality",
+            "commit_message_quality.py",
+        )
+        spec = importlib.util.spec_from_file_location("commit_message_quality", service_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        service = module.CommitMessageQuality()
+        return service.get_quality(githubUrl)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

@@ -29,7 +29,7 @@ const splOptions = {
     },
     {
       label: "Code Quality",
-      children: ["Code duplication", "Number of functions", "Time complexity"],
+      children: ["Code duplication", "Number of functions", "Time complexity", "Commit message quality"],
     },
   ],
 

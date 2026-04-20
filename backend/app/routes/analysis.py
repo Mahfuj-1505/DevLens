@@ -31,6 +31,12 @@ async def analyze_github_repository(payload: GithubAnalysisRequest):
                 "totalVariables": output["result"].get("total_variables", 0),
                 "languages": output["result"].get("languages", []),
             },
+            "namingQuality": output["result"].get("naming_quality", {
+                "score": 100,
+                "percentage": 100,
+                "evaluatedNames": 0,
+                "worstNames": [],
+            }),
         }
     except Exception as exc:
         raise HTTPException(

@@ -60,3 +60,4 @@ server.conf.txt
 runtime
 __pycache__/
 *.pyc
+todo.txt

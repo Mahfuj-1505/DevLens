@@ -151,3 +151,15 @@ export async function analyzeChurn(githubUrl) {
   }
   return response.json();
 }
+
+export async function analyzeCommitMessageQuality(githubUrl) {
+  const response = await fetch(
+    `${api.baseURL}/repositories/commit-message-quality?githubUrl=${encodeURIComponent(githubUrl)}`,
+    { method: "GET", headers: { "Content-Type": "application/json" } }
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch commit message quality data");
+  }
+  return response.json();
+}

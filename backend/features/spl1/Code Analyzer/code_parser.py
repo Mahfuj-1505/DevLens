@@ -3,7 +3,6 @@ code_parser.py - Extract functions and variables from source code
 Supports: Python, JavaScript, Java, C, C++
 """
 import re
-import random
 from typing import Dict, List
 from pathlib import Path
 
@@ -134,8 +133,8 @@ class CodeParser:
         
         return function_counts
     
-    def extract_variables(self, code: str, language: str, max_count: int = 50) -> Dict[str, int]:
-        """Extract variable names and occurrence counts (sampled if too many names)."""
+    def extract_variables(self, code: str, language: str) -> Dict[str, int]:
+        """Extract variable names and occurrence counts."""
         if language not in self.variable_patterns:
             return {}
         
@@ -147,12 +146,6 @@ class CodeParser:
         for match in matches:
             if self.is_valid_identifier(match):
                 variable_counts[match] = variable_counts.get(match, 0) + 1
-        
-        # If too many variables, randomly sample
-        names = list(variable_counts.keys())
-        if len(names) > max_count:
-            sampled_names = set(random.sample(names, max_count))
-            variable_counts = {k: v for k, v in variable_counts.items() if k in sampled_names}
         
         return variable_counts
 
@@ -222,7 +215,7 @@ class CodeParser:
                 code = f.read()
             
             function_counts = self.extract_functions(code, language)
-            variable_counts = self.extract_variables(code, language, max_count=50)
+            variable_counts = self.extract_variables(code, language)
             comments = self.count_comments(code, language)
             
             return {
