@@ -4,6 +4,7 @@ import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, an
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ReportDownload from "./components/reportDownload";
 import HeatmapGrid from "./components/HeatmapGrid";
+import ComingSoon from "./components/ComingSoon";
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
@@ -125,21 +126,12 @@ function ChatPanel({ width, onResize, commitData, locData }) {
   );
 }
 
-function ComingSoon({ title }) {
-  return (
-    <div className="metric-card" style={{ opacity: 0.6 }}>
-      <h2>{title}</h2>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 80, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 10, color: "#e9d5ff", fontFamily: "var(--mono)", fontSize: "0.78rem", gap: 8 }}>
-        🚧 Coming Soon
-      </div>
-    </div>
-  );
-}
-
 export default function ResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { repoLink, selectedOptions, isDefault, spl } = location.state || {};
+  const { repoLink, repoSource, sourceType = "github", selectedOptions, isDefault, spl } = location.state || {};
+  const selectedSource = repoSource || repoLink;
+  const analysisSource = { sourceType, value: selectedSource };
 
   const [commitData, setCommitData] = useState(null);
   const [locData, setLocData] = useState(null);
@@ -152,25 +144,25 @@ export default function ResultPage() {
   const [error, setError] = useState(null);
   const [chatWidth, setChatWidth] = useState(340);
 
-  const showCommits = isDefault || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
-  const showLOC = isDefault || hasOption(selectedOptions, "LOC");
-  const showHeatmap = isDefault || hasOption(selectedOptions, "File change heatmap");
-  const showOwnership = isDefault || hasOption(selectedOptions, "Code Ownership") || hasOption(selectedOptions, "Code ownership");
-  const showIssues = isDefault || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
-  const showChurn = isDefault || hasOption(selectedOptions, "Churn rate") || hasOption(selectedOptions, "Churn Rate");
-  const showCommitMessageQuality = isDefault || hasOption(selectedOptions, "Commit message quality");
-  const showNamingConventions = isDefault || hasOption(selectedOptions, "Naming conventions");
+  const showCommits = (isDefault && spl !== "SPL-3") || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
+  const showLOC = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Lines of Code (LOC)") || hasOption(selectedOptions, "LOC");
+  const showHeatmap = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "File change heatmap");
+  const showOwnership = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Code Ownership") || hasOption(selectedOptions, "Code ownership");
+  const showIssues = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
+  const showChurn = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Churn rate") || hasOption(selectedOptions, "Churn Rate");
+  const showCommitMessageQuality = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Commit message quality");
+  const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
 
   useEffect(() => {
-    if (!repoLink) { navigate("/home"); return; }
+    if (!selectedSource) { navigate("/home"); return; }
     const requests = [];
-    if (showCommits) requests.push(analyzeCommits(repoLink).then(setCommitData));
-    if (showLOC) requests.push(analyzeGithubRepo(repoLink).then(setLocData));
-    if (showHeatmap) requests.push(analyzeHeatmap(repoLink).then(setHeatmapData));
-    if (showOwnership) requests.push(analyzeOwnership(repoLink).then(setOwnershipData));
-    if (showIssues) requests.push(analyzeIssues(repoLink).then(setIssuesData));
-    if (showChurn) requests.push(analyzeChurn(repoLink).then(setChurnData));
-    if (showCommitMessageQuality) requests.push(analyzeCommitMessageQuality(repoLink).then(setCommitMessageQualityData));
+    if (showCommits) requests.push(analyzeCommits(analysisSource).then(setCommitData));
+    if (showLOC) requests.push(analyzeGithubRepo(analysisSource).then(setLocData));
+    if (showHeatmap) requests.push(analyzeHeatmap(analysisSource).then(setHeatmapData));
+    if (showOwnership) requests.push(analyzeOwnership(analysisSource).then(setOwnershipData));
+    if (showIssues) requests.push(analyzeIssues(analysisSource).then(setIssuesData));
+    if (showChurn) requests.push(analyzeChurn(analysisSource).then(setChurnData));
+    if (showCommitMessageQuality) requests.push(analyzeCommitMessageQuality(analysisSource).then(setCommitMessageQualityData));
     if (!requests.length) { setLoading(false); return; }
     Promise.all(requests)
       .catch((err) => setError(err.message))
@@ -179,7 +171,7 @@ export default function ResultPage() {
         setMsgIndex(loadingMessages.length - 1);
         setTimeout(() => setLoading(false), 300);
       });
-  }, [repoLink]);
+  }, [selectedSource, sourceType]);
 
   const [progress, setProgress] = React.useState(0);
   const [msgIndex, setMsgIndex] = React.useState(0);
@@ -195,9 +187,14 @@ export default function ResultPage() {
     if (showCommitMessageQuality) msgs.push("Linting commit messages with Gitlint...", "Scoring commit message clarity and structure...");
     if (showNamingConventions) msgs.push("Checking naming conventions...", "Ranking worst variable and function names...");
     if (showHeatmap) msgs.push("Building file change heatmap...");
-    msgs.push("Processing results...", "Collecting all result", "Almost Done!");
+    
+    // SPL-specific messaging
+    if (spl === "SPL-1") msgs.push("Processing complexity metrics...", "Finalizing SPL-1 analysis...");
+    if (spl === "SPL-2") msgs.push("Processing team metrics...", "Calculating design metrics...", "Finalizing SPL-2 analysis...");
+    
+    msgs.push("Processing results...", "Collecting all results...", "Almost Done!");
     return msgs;
-  }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showCommitMessageQuality, showNamingConventions, showHeatmap]);
+  }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showCommitMessageQuality, showNamingConventions, showHeatmap, spl]);
 
   React.useEffect(() => {
     if (!loading) return;
@@ -276,7 +273,9 @@ export default function ResultPage() {
 
   if (error) return <div className="result-error">Error: {error}</div>;
 
-  const repoName = repoLink?.replace("https://github.com/", "") || "Repository";
+  const repoName = sourceType === "local"
+    ? (selectedSource?.split("/").filter(Boolean).pop() || "Local Repository")
+    : (selectedSource?.replace("https://github.com/", "") || "Repository");
 
   const th = { textAlign: "left", padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.08)", color: "rgba(233,213,255,0.5)", fontSize: "0.65rem", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em" };
   const td = { padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "0.72rem", fontFamily: "var(--mono)", color: "#e9d5ff" };
@@ -567,6 +566,14 @@ export default function ResultPage() {
               <ComingSoon title="Commit — Meaningfulness" />
               <ComingSoon title="Commit — Activity Graph" />
               <ComingSoon title="AI Generated Code %" />
+            </>
+          )}
+
+          {/* SPL-2 Specific Features - Coming Soon */}
+          {spl === "SPL-2" && (
+            <>
+              {!showCommits && <ComingSoon title="Class & Component Design" />}
+              {!showChurn && <ComingSoon title="Feature Branching & Merging" />}
             </>
           )}
 

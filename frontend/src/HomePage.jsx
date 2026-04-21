@@ -6,17 +6,19 @@ import OptionPanel from "./components/optionPanel";
 import OptionSummary from "./components/optionSummary";
 
 function App() {
-  const [repoLink, setRepoLink] = useState("");
-  const [submittedLink, setSubmittedLink] = useState("");
+  const [repoSource, setRepoSource] = useState("");
+  const [sourceType, setSourceType] = useState("github");
+  const [submittedSource, setSubmittedSource] = useState("");
+  const [submittedSourceType, setSubmittedSourceType] = useState("github");
   const [selectedSpl, setSelectedSpl] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState([]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (repoLink.trim() === "") return;
-    setSubmittedLink(repoLink);
-    setRepoLink("");
+    if (repoSource.trim() === "") return;
+    setSubmittedSource(repoSource.trim());
+    setSubmittedSourceType(sourceType);
   };
 
   return (
@@ -26,10 +28,13 @@ function App() {
         <p className="subtitle">Choose an SPL option below</p>
 
         <RepoForm
-          repoLink={repoLink}
-          setRepoLink={setRepoLink}
+          repoSource={repoSource}
+          setRepoSource={setRepoSource}
+          sourceType={sourceType}
+          setSourceType={setSourceType}
           handleSubmit={handleSubmit}
-          submittedLink={submittedLink}
+          submittedSource={submittedSource}
+          submittedSourceType={submittedSourceType}
         />
 
         <div className="horizontal-flow">
@@ -47,7 +52,8 @@ function App() {
                     spl={selectedSpl}
                     setShowSummary={setShowSummary}
                     setSelectedOptions={setSelectedOptions}
-                    repoLink={repoLink}
+                    repoSource={repoSource}
+                    sourceType={sourceType}
                   />
                 </div>
               )}

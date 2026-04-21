@@ -4,23 +4,45 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from features.spl1.repo_analysis_service import RepoAnalysisService
+from app.utils.repo_source import resolve_repository_source
 
 router = APIRouter(prefix="/analysis", tags=["Repository Analysis"])
 
 
 class GithubAnalysisRequest(BaseModel):
-    githubUrl: str = Field(..., description="Public GitHub repository URL")
+    sourceType: str = Field(
+        "github",
+        description="Repository source type: github or local",
+        examples=["github", "local"],
+    )
+    githubUrl: str | None = Field(
+        default=None,
+        description="Public GitHub repository URL",
+        examples=["https://github.com/mr-mahfuj/DevLens"],
+    )
+    localPath: str | None = Field(
+        default=None,
+        description="Local git repository path",
+        examples=["/home/user/projects/my-repo", "~/projects/my-repo"],
+    )
 
 
 @router.post("/github", status_code=status.HTTP_200_OK)
 async def analyze_github_repository(payload: GithubAnalysisRequest):
-    """Clone GitHub repo, run analyzer, and save output JSON."""
+    """Analyze a repository from either GitHub URL or local path and save output JSON."""
     try:
+        source_type, repo_source = resolve_repository_source(
+            payload.sourceType,
+            payload.githubUrl,
+            payload.localPath,
+        )
         service = RepoAnalysisService()
-        output = service.run_from_github_url(payload.githubUrl)
+        output = service.run_from_source(repo_source)
         return {
             "message": "Analysis completed",
+            "sourceType": source_type,
             "githubUrl": output["github_url"],
+            "localPath": output.get("local_path"),
             "clonePath": output["clone_path"],
             "jsonOutputPath": output["json_output_path"],
             "summary": {

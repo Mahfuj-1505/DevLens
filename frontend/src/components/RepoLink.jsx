@@ -4,16 +4,17 @@ import './RepoLink.css';
 import { analyzeGithubRepo } from '../api';
 
 export default function RepoLink() {
-    const [repolink, setRepoLink] = useState('');
+    const [repoSource, setRepoSource] = useState('');
+    const [sourceType, setSourceType] = useState('github');
     const [loading, setLoading] = useState(false);
     const [statusText, setStatusText] = useState('');
 
     const handleSubmit = async () => {
-        if (repolink.trim()) {
+        if (repoSource.trim()) {
             try {
                 setLoading(true);
                 setStatusText('Running analysis...');
-                const result = await analyzeGithubRepo(repolink.trim());
+                const result = await analyzeGithubRepo({ sourceType, value: repoSource.trim() });
                 setStatusText(`Done. JSON: ${result.jsonOutputPath}`);
             } catch (error) {
                 setStatusText(`Failed: ${error.message}`);
@@ -33,20 +34,29 @@ export default function RepoLink() {
     return (
         <div className="repo-input-wrapper">
             <div className="repo-input-container">
-                <div className={`input-box ${repolink.trim() ? 'has-content' : ''}`}>
+                <div className={`input-box ${repoSource.trim() ? 'has-content' : ''}`}>
+                    <select
+                        value={sourceType}
+                        onChange={(e) => setSourceType(e.target.value)}
+                        className="repo-textarea"
+                        style={{ maxWidth: '180px', marginBottom: '8px' }}
+                    >
+                        <option value="github">Repo link</option>
+                        <option value="local">Local path</option>
+                    </select>
                     <textarea 
-                        value={repolink}
-                        onChange={(e) => setRepoLink(e.target.value)}
+                        value={repoSource}
+                        onChange={(e) => setRepoSource(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        placeholder="Paste repository link..."
+                        placeholder={sourceType === 'local' ? 'Paste local repository path...' : 'Paste repository link...'}
                         className="repo-textarea"
                         rows={1}
                     />
           
                     <button 
                         onClick={handleSubmit}
-                        disabled={!repolink.trim() || loading}
-                        className={`submit-button ${repolink.trim() ? 'active' : 'disabled'}`}
+                        disabled={!repoSource.trim() || loading}
+                        className={`submit-button ${repoSource.trim() ? 'active' : 'disabled'}`}
                     >
                         <ArrowUp className="arrow-icon" />
                     </button>

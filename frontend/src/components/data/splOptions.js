@@ -1,36 +1,60 @@
 const splOptions = {
   "SPL-1": [
-    "LOC",
+    "Lines of Code (LOC)",
     {
       label: "Code Complexity",
-      children: ["Number of functions", "Time complexity", "Code duplication"],
+      children: [
+        "Number of functions",
+        "Cyclomatic Complexity",
+        "Code duplication",
+      ],
     },
     {
-      label: "Commit",
+      label: "Commits & Activity",
       children: [
-        "Meaningfulness",
+        "Commit message quality",
         "Number of commits",
         "Changes per commit",
         "Activity graph",
       ],
     },
-    "AI generated code %",
-    "Naming conventions",
+    "Clean code - Naming conventions",
   ],
 
   "SPL-2": [
-    "LOC",
+    "Lines of Code (LOC)",
+    {
+      label: "Code Complexity",
+      children: [
+        "Number of functions",
+        "Cyclomatic Complexity",
+        "Code duplication",
+      ],
+    },
+    {
+      label: "Commits & Activity",
+      children: [
+        "Commit message quality",
+        "Number of commits",
+        "Changes per commit",
+        "Activity graph",
+      ],
+    },
+    "Clean code - Naming conventions",
     "Code Ownership",
-    "SOLID Principle",
+    "Churn rate",
+    "File change heatmap",
     "Issue Tracking",
     {
-      label: "Performance",
-      children: ["Query Complexity", "File change heatmap", "Churn rate"],
+      label: "Class and Component Design",
+      children: [
+        "WMC (Weighted Methods per Class)",
+        "LCOM (Lack of Cohesion of Methods)",
+        "DIT (Depth of Inheritance Tree)",
+        "NOC (Number of Children)",
+      ],
     },
-    {
-      label: "Code Quality",
-      children: ["Code duplication", "Number of functions", "Time complexity", "Commit message quality"],
-    },
+    "Feature branching and merging",
   ],
 
   "SPL-3": [

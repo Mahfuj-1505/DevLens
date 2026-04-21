@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -25,19 +26,20 @@ class RepoAnalysisService:
         self.clone_root.mkdir(parents=True, exist_ok=True)
         self.output_root.mkdir(parents=True, exist_ok=True)
 
-    def _safe_repo_name(self, github_url: str) -> str:
-        raw = github_url.rstrip("/").split("/")[-1]
+    def _safe_repo_name(self, repo_source: str) -> str:
+        raw = repo_source.rstrip("/").split("/")[-1]
         if raw.endswith(".git"):
             raw = raw[:-4]
         return re.sub(r"[^a-zA-Z0-9._-]", "_", raw) or "repository"
 
-    def _clone_repo(self, github_url: str) -> Path:
-        repo_name = self._safe_repo_name(github_url)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        clone_path = self.clone_root / f"{repo_name}_{ts}"
+    def _clone_repo(self, repo_source: str) -> Path:
+        repo_name = self._safe_repo_name(repo_source)
+        clone_path = Path(
+            tempfile.mkdtemp(prefix=f"{repo_name}_", dir=str(self.clone_root))
+        )
 
         result = subprocess.run(
-            ["git", "clone", "--depth", "1", github_url, str(clone_path)],
+            ["git", "clone", "--depth", "1", repo_source, str(clone_path)],
             capture_output=True,
             text=True,
         )
@@ -69,26 +71,32 @@ class RepoAnalysisService:
 
         return module.CodeAnalyzer
 
-    def run_from_github_url(self, github_url: str) -> Dict:
-        clone_path = self._clone_repo(github_url)
+    def run_from_source(self, repo_source: str) -> Dict:
+        clone_path: Path | None = None
+        try:
+            clone_path = self._clone_repo(repo_source)
 
-        repo_name = self._safe_repo_name(github_url)
-        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        output_path = self.output_root / f"{repo_name}_analysis_{ts}.json"
+            repo_name = self._safe_repo_name(repo_source)
+            ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            output_path = self.output_root / f"{repo_name}_analysis_{ts}.json"
 
-        CodeAnalyzer = self._load_code_analyzer_class()
-        analyzer = CodeAnalyzer(str(clone_path))
-        saved_path = analyzer.save_json(str(output_path))
+            CodeAnalyzer = self._load_code_analyzer_class()
+            analyzer = CodeAnalyzer(str(clone_path))
+            saved_path = analyzer.save_json(str(output_path))
 
-        with open(saved_path, "r", encoding="utf-8") as f:
-            result = json.load(f)
+            with open(saved_path, "r", encoding="utf-8") as f:
+                result = json.load(f)
 
-        return {
-            "github_url": github_url,
-            "clone_path": str(clone_path),
-            "json_output_path": str(saved_path),
-            "result": result,
-        }
+            return {
+                "github_url": repo_source if repo_source.startswith("http") or repo_source.startswith("git@") else None,
+                "local_path": repo_source if not (repo_source.startswith("http") or repo_source.startswith("git@")) else None,
+                "clone_path": str(clone_path),
+                "json_output_path": str(saved_path),
+                "result": result,
+            }
+        finally:
+            if clone_path is not None:
+                self.cleanup_clone(str(clone_path))
 
     def cleanup_clone(self, clone_path: str) -> None:
         path = Path(clone_path)

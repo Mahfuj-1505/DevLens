@@ -5,57 +5,125 @@ const api = {
 
 export {api};
 
-export async function analyzeGithubRepo(githubUrl) {
-  const response = await fetch(`${api.baseURL}/analysis/github`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ githubUrl }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to analyze repository");
+function buildSourcePayload(source) {
+  if (typeof source === "string") {
+    return { sourceType: "github", githubUrl: source };
   }
 
-  return response.json();
+  const sourceType = source?.sourceType === "local" ? "local" : "github";
+  return {
+    sourceType,
+    githubUrl: sourceType === "github" ? source?.value || source?.githubUrl || "" : "",
+    localPath: sourceType === "local" ? source?.value || source?.localPath || "" : "",
+  };
 }
 
-export async function analyzeHeatmap(githubUrl) {
-  const response = await fetch(
-    `${api.baseURL}/repositories/heatmap?githubUrl=${encodeURIComponent(githubUrl)}`,
-    {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    }
-  );
+function buildSourceQuery(source) {
+  const payload = buildSourcePayload(source);
+  const params = new URLSearchParams({ sourceType: payload.sourceType });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to fetch heatmap");
+  if (payload.sourceType === "github") {
+    params.set("githubUrl", payload.githubUrl);
+  } else {
+    params.set("localPath", payload.localPath);
   }
 
-  return response.json();
+  return params.toString();
 }
 
-export async function analyzeCommits(githubUrl) {
-  const response = await fetch(
-    `${api.baseURL}/repositories/commits?githubUrl=${encodeURIComponent(githubUrl)}`,
-    {
-      method: "GET",
+export async function analyzeGithubRepo(source) {
+  const payload = buildSourcePayload(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 300000); // 5 minutes
+  
+  try {
+    const response = await fetch(`${api.baseURL}/analysis/github`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to analyze repository");
     }
-  );
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to analyze commits");
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Analysis timed out after 5 minutes. The repository may be too large or the server is overloaded.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
+}
 
-  return response.json();
+export async function analyzeHeatmap(source) {
+  const query = buildSourceQuery(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+  
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/heatmap?${query}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch heatmap");
+    }
+
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Heatmap fetch timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function analyzeCommits(source) {
+  const query = buildSourceQuery(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+  
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/commits?${query}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to analyze commits");
+    }
+
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Commit analysis timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function fetchMetrics({ owner, repo, branch, from, to }) {
@@ -116,50 +184,102 @@ export async function fetchMetrics({ owner, repo, branch, from, to }) {
   return mock;
 }
 
-export async function analyzeOwnership(githubUrl) {
-  const response = await fetch(
-    `${api.baseURL}/repositories/ownership?githubUrl=${encodeURIComponent(githubUrl)}`,
-    { method: "GET", headers: { "Content-Type": "application/json" } }
-  );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to fetch ownership data");
+export async function analyzeOwnership(source) {
+  const query = buildSourceQuery(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+  
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/ownership?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch ownership data");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Ownership fetch timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return response.json();
 }
 
-export async function analyzeIssues(githubUrl) {
-  const response = await fetch(
-    `${api.baseURL}/repositories/issues?githubUrl=${encodeURIComponent(githubUrl)}`,
-    { method: "GET", headers: { "Content-Type": "application/json" } }
-  );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to fetch issues data");
+export async function analyzeIssues(source) {
+  const query = buildSourceQuery(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+  
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/issues?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch issues data");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Issues fetch timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return response.json();
 }
 
-export async function analyzeChurn(githubUrl) {
-  const response = await fetch(
-    `${api.baseURL}/repositories/churn?githubUrl=${encodeURIComponent(githubUrl)}`,
-    { method: "GET", headers: { "Content-Type": "application/json" } }
-  );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to fetch churn data");
+export async function analyzeChurn(source) {
+  const query = buildSourceQuery(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+  
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/churn?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch churn data");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Churn fetch timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return response.json();
 }
 
-export async function analyzeCommitMessageQuality(githubUrl) {
-  const response = await fetch(
-    `${api.baseURL}/repositories/commit-message-quality?githubUrl=${encodeURIComponent(githubUrl)}`,
-    { method: "GET", headers: { "Content-Type": "application/json" } }
-  );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Failed to fetch commit message quality data");
+export async function analyzeCommitMessageQuality(source) {
+  const query = buildSourceQuery(source);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+  
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/commit-message-quality?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch commit message quality data");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Commit message quality fetch timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-  return response.json();
 }

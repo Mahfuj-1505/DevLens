@@ -32,8 +32,8 @@ html, body {
   /*height: calc(100vh - 150px);  */
   height: 90vh;/*Added this*/
   max-height: none;            
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   animation: pageEnter 0.5s ease-in-out both;
   overflow-y: auto;
@@ -126,6 +126,11 @@ html, body {
   margin-left: 0;
   padding-left: 24px; 
   min-height: 0;/*added this*/
+}
+
+.flow-section-options .card-container {
+  min-height: 0;
+  max-height: 100%;
 }
 
 .flow-section-summary {
