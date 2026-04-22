@@ -36,6 +36,43 @@ async def get_commits(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/commit-activity", status_code=status.HTTP_200_OK)
+async def get_commit_activity(
+    sourceType: str = Query("github", description="Repository source type: github or local", examples=["github", "local"]),
+    githubUrl: str | None = Query(default=None, description="Public GitHub repository URL", examples=["https://github.com/mr-mahfuj/DevLens"]),
+    localPath: str | None = Query(default=None, description="Local git repository path", examples=["/home/user/projects/my-repo"]),
+    weeks: int = Query(default=26, ge=4, le=104, description="Number of weeks to include in activity graph"),
+):
+    try:
+        _, repo_source = resolve_repository_source(sourceType, githubUrl, localPath)
+        CommitActivityAnalyzer = _load_service("", "commit_activity.py", "CommitActivityAnalyzer")
+        service = CommitActivityAnalyzer()
+        return service.analyze(repo_source, weeks=weeks)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/cyclomatic-complexity", status_code=status.HTTP_200_OK)
+async def get_cyclomatic_complexity(
+    sourceType: str = Query("github", description="Repository source type: github or local", examples=["github", "local"]),
+    githubUrl: str | None = Query(default=None, description="Public GitHub repository URL", examples=["https://github.com/mr-mahfuj/DevLens"]),
+    localPath: str | None = Query(default=None, description="Local git repository path", examples=["/home/user/projects/my-repo"]),
+    topN: int = Query(default=10, ge=1, le=30, description="Number of high-complexity files/functions to return"),
+    threshold: int = Query(default=10, ge=1, le=50, description="Cyclomatic complexity threshold for high complexity"),
+):
+    try:
+        _, repo_source = resolve_repository_source(sourceType, githubUrl, localPath)
+        CyclomaticComplexityAnalyzer = _load_service("", "cyclomatic_complexity.py", "CyclomaticComplexityAnalyzer")
+        service = CyclomaticComplexityAnalyzer()
+        return service.analyze(repo_source, top_n=topN, threshold=threshold)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
 @router.get("/heatmap", status_code=status.HTTP_200_OK)
 async def get_file_heatmap(

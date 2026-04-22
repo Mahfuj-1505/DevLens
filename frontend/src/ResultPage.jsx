@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn, analyzeCommitMessageQuality } from "./api";
+import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn, analyzeCommitMessageQuality, analyzeCyclomaticComplexity, analyzeCommitActivity } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ReportDownload from "./components/reportDownload";
 import HeatmapGrid from "./components/HeatmapGrid";
 import ComingSoon from "./components/ComingSoon";
+import CommitActivity from "./components/CommitActivity";
+import ComplexityTreemap from "./components/ComplexityTreemap";
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
@@ -140,8 +142,10 @@ export default function ResultPage() {
   const [issuesData, setIssuesData] = useState(null);
   const [churnData, setChurnData] = useState(null);
   const [commitMessageQualityData, setCommitMessageQualityData] = useState(null);
+  const [cyclomaticData, setCyclomaticData] = useState(null);
+  const [commitActivityData, setCommitActivityData] = useState(null);
+  const [featureErrors, setFeatureErrors] = useState({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [chatWidth, setChatWidth] = useState(340);
 
   const showCommits = (isDefault && spl !== "SPL-3") || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
@@ -151,26 +155,121 @@ export default function ResultPage() {
   const showIssues = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
   const showChurn = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Churn rate") || hasOption(selectedOptions, "Churn Rate");
   const showCommitMessageQuality = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Commit message quality");
+  const showCyclomatic = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Cyclomatic Complexity");
+  const showActivityGraph = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Activity graph") || hasOption(selectedOptions, "Activity Graph");
   const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
+
+  const renderFeatureErrorCard = (title, errorMessage) => (
+    <div className="metric-card">
+      <h2>{title}</h2>
+      <p style={{ fontSize: "0.75rem", color: "#fca5a5", fontFamily: "var(--mono)", marginBottom: 8 }}>
+        This feature failed to load.
+      </p>
+      <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.7)", fontFamily: "var(--mono)" }}>
+        {errorMessage}
+      </p>
+    </div>
+  );
 
   useEffect(() => {
     if (!selectedSource) { navigate("/home"); return; }
-    const requests = [];
-    if (showCommits) requests.push(analyzeCommits(analysisSource).then(setCommitData));
-    if (showLOC) requests.push(analyzeGithubRepo(analysisSource).then(setLocData));
-    if (showHeatmap) requests.push(analyzeHeatmap(analysisSource).then(setHeatmapData));
-    if (showOwnership) requests.push(analyzeOwnership(analysisSource).then(setOwnershipData));
-    if (showIssues) requests.push(analyzeIssues(analysisSource).then(setIssuesData));
-    if (showChurn) requests.push(analyzeChurn(analysisSource).then(setChurnData));
-    if (showCommitMessageQuality) requests.push(analyzeCommitMessageQuality(analysisSource).then(setCommitMessageQualityData));
-    if (!requests.length) { setLoading(false); return; }
-    Promise.all(requests)
-      .catch((err) => setError(err.message))
-      .finally(() => {
-        setProgress(100);
-        setMsgIndex(loadingMessages.length - 1);
-        setTimeout(() => setLoading(false), 300);
+    setFeatureErrors({});
+    setCommitData(null);
+    setLocData(null);
+    setHeatmapData(null);
+    setOwnershipData(null);
+    setIssuesData(null);
+    setChurnData(null);
+    setCommitMessageQualityData(null);
+    setCyclomaticData(null);
+    setCommitActivityData(null);
+
+    const tasks = [];
+
+    if (showCommits) {
+      tasks.push({
+        key: "commits",
+        run: () => analyzeCommits(analysisSource),
+        onSuccess: setCommitData,
       });
+    }
+    if (showLOC) {
+      tasks.push({
+        key: "loc",
+        run: () => analyzeGithubRepo(analysisSource),
+        onSuccess: setLocData,
+      });
+    }
+    if (showHeatmap) {
+      tasks.push({
+        key: "heatmap",
+        run: () => analyzeHeatmap(analysisSource),
+        onSuccess: setHeatmapData,
+      });
+    }
+    if (showOwnership) {
+      tasks.push({
+        key: "ownership",
+        run: () => analyzeOwnership(analysisSource),
+        onSuccess: setOwnershipData,
+      });
+    }
+    if (showIssues) {
+      tasks.push({
+        key: "issues",
+        run: () => analyzeIssues(analysisSource),
+        onSuccess: setIssuesData,
+      });
+    }
+    if (showChurn) {
+      tasks.push({
+        key: "churn",
+        run: () => analyzeChurn(analysisSource),
+        onSuccess: setChurnData,
+      });
+    }
+    if (showCommitMessageQuality) {
+      tasks.push({
+        key: "commitMessageQuality",
+        run: () => analyzeCommitMessageQuality(analysisSource),
+        onSuccess: setCommitMessageQualityData,
+      });
+    }
+    if (showCyclomatic) {
+      tasks.push({
+        key: "cyclomatic",
+        run: () => analyzeCyclomaticComplexity(analysisSource, { topN: 10, threshold: 10 }),
+        onSuccess: setCyclomaticData,
+      });
+    }
+    if (showActivityGraph) {
+      tasks.push({
+        key: "activityGraph",
+        run: () => analyzeCommitActivity(analysisSource, { weeks: 26 }),
+        onSuccess: setCommitActivityData,
+      });
+    }
+
+    if (!tasks.length) {
+      setLoading(false);
+      return;
+    }
+
+    Promise.allSettled(
+      tasks.map(async (task) => {
+        try {
+          const result = await task.run();
+          task.onSuccess(result);
+        } catch (err) {
+          const message = err?.message || "Unknown error while loading this feature";
+          setFeatureErrors((prev) => ({ ...prev, [task.key]: message }));
+        }
+      })
+    ).finally(() => {
+      setProgress(100);
+      setMsgIndex(loadingMessages.length - 1);
+      setTimeout(() => setLoading(false), 300);
+    });
   }, [selectedSource, sourceType]);
 
   const [progress, setProgress] = React.useState(0);
@@ -185,6 +284,8 @@ export default function ResultPage() {
     if (showIssues) msgs.push("Fetching issues from GitHub...", "Analyzing open and closed issues...");
     if (showChurn) msgs.push("Calculating code churn rate...", "Finding most rewritten files...");
     if (showCommitMessageQuality) msgs.push("Linting commit messages with Gitlint...", "Scoring commit message clarity and structure...");
+    if (showCyclomatic) msgs.push("Calculating cyclomatic complexity using Lizard...", "Ranking high-complexity files...");
+    if (showActivityGraph) msgs.push("Building GitHub-style commit activity graph...");
     if (showNamingConventions) msgs.push("Checking naming conventions...", "Ranking worst variable and function names...");
     if (showHeatmap) msgs.push("Building file change heatmap...");
     
@@ -194,7 +295,7 @@ export default function ResultPage() {
     
     msgs.push("Processing results...", "Collecting all results...", "Almost Done!");
     return msgs;
-  }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showCommitMessageQuality, showNamingConventions, showHeatmap, spl]);
+  }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, spl]);
 
   React.useEffect(() => {
     if (!loading) return;
@@ -271,8 +372,6 @@ export default function ResultPage() {
     </div>
   );
 
-  if (error) return <div className="result-error">Error: {error}</div>;
-
   const repoName = sourceType === "local"
     ? (selectedSource?.split("/").filter(Boolean).pop() || "Local Repository")
     : (selectedSource?.replace("https://github.com/", "") || "Repository");
@@ -306,6 +405,7 @@ export default function ResultPage() {
               )}
             </div>
           )}
+          {showLOC && !locData && featureErrors.loc && renderFeatureErrorCard("Lines of Code", featureErrors.loc)}
 
           {showCommits && commitData && (
             <div className="metric-card">
@@ -320,6 +420,7 @@ export default function ResultPage() {
               </div>
             </div>
           )}
+          {showCommits && !commitData && featureErrors.commits && renderFeatureErrorCard("Commit Summary", featureErrors.commits)}
 
           {showCommits && commitData && (
             <div className="metric-card">
@@ -388,6 +489,7 @@ export default function ResultPage() {
               </div>
             </div>
           )}
+          {showOwnership && !ownershipData && featureErrors.ownership && renderFeatureErrorCard("Code Ownership", featureErrors.ownership)}
 
           {showIssues && issuesData && (
             <div className="metric-card">
@@ -427,6 +529,7 @@ export default function ResultPage() {
               </div>
             </div>
           )}
+          {showIssues && !issuesData && featureErrors.issues && renderFeatureErrorCard("Issue Tracking", featureErrors.issues)}
 
           {showChurn && churnData && (
             <div className="metric-card">
@@ -464,6 +567,7 @@ export default function ResultPage() {
               </div>
             </div>
           )}
+          {showChurn && !churnData && featureErrors.churn && renderFeatureErrorCard("Churn Rate", featureErrors.churn)}
 
           {showCommitMessageQuality && commitMessageQualityData && (
             <div className="metric-card">
@@ -502,6 +606,64 @@ export default function ResultPage() {
               </div>
             </div>
           )}
+          {showCommitMessageQuality && !commitMessageQualityData && featureErrors.commitMessageQuality && renderFeatureErrorCard("Commit Message Quality", featureErrors.commitMessageQuality)}
+
+          {showCyclomatic && cyclomaticData && (
+            <div className="metric-card">
+              <h2>Cyclomatic Complexity</h2>
+              <div className="stat-grid" style={{ marginBottom: 20 }}>
+                <div className="stat-item"><div className="stat-label">Average Complexity</div><div className="stat-value accent">{cyclomaticData.averageCyclomaticComplexity}</div></div>
+                <div className="stat-item"><div className="stat-label">Functions Analyzed</div><div className="stat-value">{cyclomaticData.totalFunctions}</div></div>
+                <div className="stat-item"><div className="stat-label">Files Scanned</div><div className="stat-value">{cyclomaticData.totalFilesAnalyzed}</div></div>
+                <div className="stat-item"><div className="stat-label">High Threshold</div><div className="stat-value">≥ {cyclomaticData.highComplexityThreshold}</div></div>
+              </div>
+
+              <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Files With High Complexity
+              </p>
+              <ComplexityTreemap
+                items={(cyclomaticData.highComplexityFiles || []).map((file) => ({ path: file.file, complexity: file.maxFunctionComplexity }))}
+              />
+
+              <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", marginTop: 20, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Highest Complexity Functions
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>File</th>
+                      <th style={th}>Function</th>
+                      <th style={{ ...th, textAlign: "right" }}>Complexity</th>
+                      <th style={{ ...th, textAlign: "right" }}>NLOC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(cyclomaticData.highComplexityFunctions || []).map((fn, i) => (
+                      <tr key={`${fn.file}-${fn.name}-${i}`} style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                        <td style={{ ...td, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={fn.file}>{fn.file.split("/").pop()}</td>
+                        <td style={{ ...td, color: "#c4b5fd" }}>{fn.name}</td>
+                        <td style={{ ...td, textAlign: "right", color: fn.complexity >= 20 ? "#f87171" : fn.complexity >= 10 ? "#facc15" : "#4ade80", fontWeight: 700 }}>{fn.complexity}</td>
+                        <td style={{ ...td, textAlign: "right" }}>{fn.nloc}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {showCyclomatic && !cyclomaticData && featureErrors.cyclomatic && renderFeatureErrorCard("Cyclomatic Complexity", featureErrors.cyclomatic)}
+
+          {showActivityGraph && commitActivityData && (
+            <div className="metric-card">
+              <h2>Commit Activity Graph</h2>
+              <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", marginBottom: 14 }}>
+                Last {commitActivityData.weeks} weeks ({commitActivityData.dateRange?.from} to {commitActivityData.dateRange?.to})
+              </p>
+              <CommitActivity activityData={commitActivityData} />
+            </div>
+          )}
+          {showActivityGraph && !commitActivityData && featureErrors.activityGraph && renderFeatureErrorCard("Commit Activity Graph", featureErrors.activityGraph)}
 
           {showNamingConventions && locData?.namingQuality && (
             <div className="metric-card">
@@ -557,15 +719,11 @@ export default function ResultPage() {
               </div>
             </div>
           )}
+          {showHeatmap && !heatmapData && featureErrors.heatmap && renderFeatureErrorCard("File Change Heatmap", featureErrors.heatmap)}
 
           {isDefault && (
             <>
-              <ComingSoon title="Code Complexity — Number of Functions" />
-              <ComingSoon title="Code Complexity — Time Complexity" />
-              <ComingSoon title="Code Complexity — Code Duplication" />
-              <ComingSoon title="Commit — Meaningfulness" />
-              <ComingSoon title="Commit — Activity Graph" />
-              <ComingSoon title="AI Generated Code %" />
+              
             </>
           )}
 
@@ -577,7 +735,7 @@ export default function ResultPage() {
             </>
           )}
 
-          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !showChurn && !showCommitMessageQuality && !showNamingConventions && !isDefault && (
+          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !showChurn && !showCommitMessageQuality && !showCyclomatic && !showActivityGraph && !showNamingConventions && !isDefault && (
             <div className="empty-state">No supported options selected.</div>
           )}
 
@@ -589,6 +747,22 @@ export default function ResultPage() {
             locData={locData}
             ownershipData={ownershipData}
             issuesData={issuesData}
+            heatmapData={heatmapData}
+            commitMessageQualityData={commitMessageQualityData}
+            cyclomaticData={cyclomaticData}
+            commitActivityData={commitActivityData}
+            visibleMetrics={{
+              loc: showLOC,
+              commits: showCommits,
+              ownership: showOwnership,
+              issues: showIssues,
+              churn: showChurn,
+              heatmap: showHeatmap,
+              commitMessageQuality: showCommitMessageQuality,
+              cyclomatic: showCyclomatic,
+              activityGraph: showActivityGraph,
+              namingConventions: showNamingConventions,
+            }}
           />
 
         </div>

@@ -283,3 +283,53 @@ export async function analyzeCommitMessageQuality(source) {
     clearTimeout(timeout);
   }
 }
+
+export async function analyzeCyclomaticComplexity(source, { topN = 10, threshold = 10 } = {}) {
+  const query = `${buildSourceQuery(source)}&topN=${topN}&threshold=${threshold}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes
+
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/cyclomatic-complexity?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch cyclomatic complexity data");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Cyclomatic complexity analysis timed out after 3 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function analyzeCommitActivity(source, { weeks = 26 } = {}) {
+  const query = `${buildSourceQuery(source)}&weeks=${weeks}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000); // 2 minutes
+
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/commit-activity?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch commit activity data");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Commit activity fetch timed out after 2 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

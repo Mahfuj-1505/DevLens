@@ -59,7 +59,7 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions, r
       </div>
 
       {mode && (
-        <div className="flow-section card-container fade-in" style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div className="flow-section card-container fade-in" style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
           {mode === "Default Option" && (
             <div style={{ display: "flex", flexDirection: "column", minHeight: 0, height: "100%" }}>
               <p style={{ marginBottom: 10, fontSize: "0.85rem", opacity: 0.8 }}>
@@ -75,7 +75,7 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions, r
                   ))}
                 </ul>
               </div>
-              <button style={{ marginTop: 8 }} className="generate_summary" onClick={() => handleNext(defaultOptions, true)}>
+              <button style={{ marginTop: 8 }} className="generate_summary generate_summary_sticky" onClick={() => handleNext(defaultOptions, true)}>
                 Generate Summary
               </button>
             </div>
@@ -130,7 +130,7 @@ export default function OptionPanel({ spl, setShowSummary, setSelectedOptions, r
               </div>
               <button
                 style={{ marginTop: 8 }}
-                className="generate_summary"
+                className="generate_summary generate_summary_sticky"
                 onClick={() => {
                   const selected = Object.keys(checked).filter((key) => checked[key]);
                   handleNext(selected.length > 0 ? selected : defaultOptions);
