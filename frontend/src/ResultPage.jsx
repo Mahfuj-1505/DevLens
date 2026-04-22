@@ -148,16 +148,19 @@ export default function ResultPage() {
   const [loading, setLoading] = useState(true);
   const [chatWidth, setChatWidth] = useState(340);
 
-  const showCommits = (isDefault && spl !== "SPL-3") || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
-  const showLOC = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Lines of Code (LOC)") || hasOption(selectedOptions, "LOC");
-  const showHeatmap = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "File change heatmap");
-  const showOwnership = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Code Ownership") || hasOption(selectedOptions, "Code ownership");
-  const showIssues = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
-  const showChurn = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Churn rate") || hasOption(selectedOptions, "Churn Rate");
-  const showCommitMessageQuality = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Commit message quality");
-  const showCyclomatic = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Cyclomatic Complexity");
-  const showActivityGraph = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Activity graph") || hasOption(selectedOptions, "Activity Graph");
-  const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
+  const showCommits = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
+  const showLOC = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Lines of Code (LOC)") || hasOption(selectedOptions, "LOC");
+  const showHeatmap = (isDefault && (spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "File change heatmap");
+  const showOwnership = (isDefault && (spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Code Ownership") || hasOption(selectedOptions, "Code ownership");
+  const showIssues = (isDefault && (spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Issue Tracking") || hasOption(selectedOptions, "Issue tracking");
+  const showChurn = (isDefault && (spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Churn rate") || hasOption(selectedOptions, "Churn Rate");
+  const showCodeDuplication = (isDefault && (spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Code duplication");
+  const showCommitMessageQuality = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Commit message quality");
+  const showCyclomatic = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Cyclomatic Complexity");
+  const showActivityGraph = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Activity graph") || hasOption(selectedOptions, "Activity Graph");
+  const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
+  const showTesting = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "Test Coverage");
+  const showCiCd = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "CI/CD Evidence");
 
   const renderFeatureErrorCard = (title, errorMessage) => (
     <div className="metric-card">
@@ -196,7 +199,7 @@ export default function ResultPage() {
     if (showLOC) {
       tasks.push({
         key: "loc",
-        run: () => analyzeGithubRepo(analysisSource),
+        run: () => analyzeGithubRepo(analysisSource, spl),
         onSuccess: setLocData,
       });
     }
@@ -280,6 +283,9 @@ export default function ResultPage() {
     const msgs = ["Cloning repository..."];
     if (showCommits) msgs.push("Analyzing commit history...", "Counting additions and deletions...");
     if (showLOC) msgs.push("Counting lines of code...", "Detecting programming languages...");
+    if (showCodeDuplication) msgs.push("Analyzing code duplication...", "Detecting clone patterns...");
+    if (showTesting) msgs.push("Detecting test frameworks...", "Analyzing test coverage...");
+    if (showCiCd) msgs.push("Scanning CI/CD pipelines...", "Validating pipeline configurations...");
     if (showOwnership) msgs.push("Measuring contributor ownership...");
     if (showIssues) msgs.push("Fetching issues from GitHub...", "Analyzing open and closed issues...");
     if (showChurn) msgs.push("Calculating code churn rate...", "Finding most rewritten files...");
@@ -292,10 +298,11 @@ export default function ResultPage() {
     // SPL-specific messaging
     if (spl === "SPL-1") msgs.push("Processing complexity metrics...", "Finalizing SPL-1 analysis...");
     if (spl === "SPL-2") msgs.push("Processing team metrics...", "Calculating design metrics...", "Finalizing SPL-2 analysis...");
+    if (spl === "SPL-3") msgs.push("Analyzing testing infrastructure...", "Evaluating CI/CD maturity...", "Finalizing SPL-3 analysis...");
     
     msgs.push("Processing results...", "Collecting all results...", "Almost Done!");
     return msgs;
-  }, [showCommits, showLOC, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, spl]);
+  }, [showCommits, showLOC, showCodeDuplication, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, showTesting, showCiCd, spl]);
 
   React.useEffect(() => {
     if (!loading) return;
@@ -406,6 +413,55 @@ export default function ResultPage() {
             </div>
           )}
           {showLOC && !locData && featureErrors.loc && renderFeatureErrorCard("Lines of Code", featureErrors.loc)}
+
+          {showTesting && locData?.summary?.testingPresence && (
+            <div className="metric-card">
+              <h2>Test Coverage</h2>
+              <div className="stat-grid">
+                <div className="stat-item"><div className="stat-label">Testing Confidence</div><div className="stat-value accent">{Math.round(locData.summary.testingPresence.testing_confidence * 100)}%</div></div>
+                <div className="stat-item"><div className="stat-label">Test Directories</div><div className="stat-value">{locData.summary.testingPresence.test_dir_found ? "Yes" : "No"}</div></div>
+                <div className="stat-item"><div className="stat-label">Test Files</div><div className="stat-value">{locData.summary.testingPresence.test_file_count}</div></div>
+                <div className="stat-item"><div className="stat-label">Frameworks</div><div className="stat-value">{locData.summary.testingPresence.frameworks_detected?.length || 0}</div></div>
+              </div>
+              {locData.summary.testingPresence.frameworks_detected?.length > 0 && (
+                <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
+                  Frameworks: {locData.summary.testingPresence.frameworks_detected.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {showCiCd && locData?.summary?.ciCdPresence && (
+            <div className="metric-card">
+              <h2>CI/CD Evidence</h2>
+              <div className="stat-grid">
+                <div className="stat-item"><div className="stat-label">CI/CD Confidence</div><div className="stat-value accent">{Math.round(locData.summary.ciCdPresence.ci_cd_confidence * 100)}%</div></div>
+                <div className="stat-item"><div className="stat-label">Pipeline Files</div><div className="stat-value">{locData.summary.ciCdPresence.valid_pipeline_files?.length || 0}</div></div>
+                <div className="stat-item"><div className="stat-label">Platforms</div><div className="stat-value">{locData.summary.ciCdPresence.platforms?.length || 0}</div></div>
+                <div className="stat-item"><div className="stat-label">Test Execution</div><div className="stat-value">{locData.summary.ciCdPresence.test_execution_found?.length > 0 ? "Yes" : "No"}</div></div>
+              </div>
+              {locData.summary.ciCdPresence.platforms?.length > 0 && (
+                <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--mono)" }}>
+                  Platforms: {locData.summary.ciCdPresence.platforms.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {showCodeDuplication && locData?.summary?.codeDuplication && (
+            <div className="metric-card">
+              <h2>Code Duplication</h2>
+              <div className="stat-grid">
+                <div className="stat-item"><div className="stat-label">Duplication %</div><div className="stat-value accent">{locData.summary.codeDuplication.duplication_percentage}%</div></div>
+                <div className="stat-item"><div className="stat-label">Files Analyzed</div><div className="stat-value">{locData.summary.codeDuplication.total_files_analyzed}</div></div>
+                <div className="stat-item"><div className="stat-label">Duplicate Groups</div><div className="stat-value">{locData.summary.codeDuplication.total_duplicate_groups}</div></div>
+                <div className="stat-item"><div className="stat-label">High Risk</div><div className="stat-value red">{locData.summary.codeDuplication.high_duplication_groups}</div></div>
+              </div>
+              <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                Code duplication detected using token-based analysis with normalization for Type-2 clones.
+              </p>
+            </div>
+          )}
 
           {showCommits && commitData && (
             <div className="metric-card">

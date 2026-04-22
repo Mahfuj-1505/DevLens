@@ -25,6 +25,11 @@ class GithubAnalysisRequest(BaseModel):
         description="Local git repository path",
         examples=["/home/user/projects/my-repo", "~/projects/my-repo"],
     )
+    spl: str | None = Field(
+        default=None,
+        description="SPL level for analysis",
+        examples=["SPL-1", "SPL-2", "SPL-3"],
+    )
 
 
 @router.post("/github", status_code=status.HTTP_200_OK)
@@ -37,7 +42,7 @@ async def analyze_github_repository(payload: GithubAnalysisRequest):
             payload.localPath,
         )
         service = RepoAnalysisService()
-        output = service.run_from_source(repo_source)
+        output = service.run_from_source(repo_source, payload.spl)
         return {
             "message": "Analysis completed",
             "sourceType": source_type,
@@ -52,6 +57,9 @@ async def analyze_github_repository(payload: GithubAnalysisRequest):
                 "totalFunctions": output["result"].get("total_functions", 0),
                 "totalVariables": output["result"].get("total_variables", 0),
                 "languages": output["result"].get("languages", []),
+                "codeDuplication": output["result"].get("code_duplication"),
+                "testingPresence": output["result"].get("testing_presence"),
+                "ciCdPresence": output["result"].get("ci_cd_presence"),
             },
             "namingQuality": output["result"].get("naming_quality", {
                 "score": 100,

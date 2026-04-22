@@ -15,14 +15,15 @@ class CodeAnalyzer:
         analyzer.save_json('output.json')
     """
     
-    def __init__(self, repo_path: str):
+    def __init__(self, repo_path: str, spl: str = None):
         """
         Initialize analyzer with a cloned repository path
         
         Args:
             repo_path: Path to a cloned git repository
+            spl: SPL level for analysis
         """
-        self.analyzer = RepoAnalyzer(repo_path)
+        self.analyzer = RepoAnalyzer(repo_path, spl)
     
     def analyze(self) -> dict:
         """

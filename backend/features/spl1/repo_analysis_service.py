@@ -71,7 +71,7 @@ class RepoAnalysisService:
 
         return module.CodeAnalyzer
 
-    def run_from_source(self, repo_source: str) -> Dict:
+    def run_from_source(self, repo_source: str, spl: str = None) -> Dict:
         clone_path: Path | None = None
         try:
             clone_path = self._clone_repo(repo_source)
@@ -81,7 +81,7 @@ class RepoAnalysisService:
             output_path = self.output_root / f"{repo_name}_analysis_{ts}.json"
 
             CodeAnalyzer = self._load_code_analyzer_class()
-            analyzer = CodeAnalyzer(str(clone_path))
+            analyzer = CodeAnalyzer(str(clone_path), spl)
             saved_path = analyzer.save_json(str(output_path))
 
             with open(saved_path, "r", encoding="utf-8") as f:

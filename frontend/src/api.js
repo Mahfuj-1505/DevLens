@@ -5,9 +5,9 @@ const api = {
 
 export {api};
 
-function buildSourcePayload(source) {
+function buildSourcePayload(source, spl = null) {
   if (typeof source === "string") {
-    return { sourceType: "github", githubUrl: source };
+    return { sourceType: "github", githubUrl: source, spl };
   }
 
   const sourceType = source?.sourceType === "local" ? "local" : "github";
@@ -15,6 +15,7 @@ function buildSourcePayload(source) {
     sourceType,
     githubUrl: sourceType === "github" ? source?.value || source?.githubUrl || "" : "",
     localPath: sourceType === "local" ? source?.value || source?.localPath || "" : "",
+    spl,
   };
 }
 
@@ -31,8 +32,8 @@ function buildSourceQuery(source) {
   return params.toString();
 }
 
-export async function analyzeGithubRepo(source) {
-  const payload = buildSourcePayload(source);
+export async function analyzeGithubRepo(source, spl = null) {
+  const payload = buildSourcePayload(source, spl);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 300000); // 5 minutes
   
