@@ -58,3 +58,6 @@ server.conf.txt
 *.md
 .github
 .idea
+
+.env.example
+.env.*
