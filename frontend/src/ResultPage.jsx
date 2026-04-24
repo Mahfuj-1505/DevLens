@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn, analyzeCommitMessageQuality, analyzeCyclomaticComplexity, analyzeCommitActivity } from "./api";
+import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn, analyzeCommitMessageQuality, analyzeCyclomaticComplexity, analyzeCommitActivity, saveReport } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ReportDownload from "./components/reportDownload";
 import HeatmapGrid from "./components/HeatmapGrid";
 import ComingSoon from "./components/ComingSoon";
 import CommitActivity from "./components/CommitActivity";
 import ComplexityTreemap from "./components/ComplexityTreemap";
+import { User } from 'lucide-react';
 import "./ResultPage.css";
 
 const hasOption = (selectedOptions, name) =>
@@ -147,6 +148,8 @@ export default function ResultPage() {
   const [featureErrors, setFeatureErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [chatWidth, setChatWidth] = useState(340);
+  const [reportSaveError, setReportSaveError] = useState("");
+  const reportSavedRef = useRef(false);
 
   const showCommits = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Number of commits") || hasOption(selectedOptions, "Changes per commit");
   const showLOC = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Lines of Code (LOC)") || hasOption(selectedOptions, "LOC");
@@ -161,6 +164,41 @@ export default function ResultPage() {
   const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
   const showTesting = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "Test Coverage");
   const showCiCd = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "CI/CD Evidence");
+
+  useEffect(() => {
+    reportSavedRef.current = false;
+  }, [selectedSource, sourceType, spl]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (reportSavedRef.current) return;
+    const token = localStorage.getItem("access_token");
+    if (!token || !selectedSource) return;
+
+    const metrics = {
+      commitData,
+      locData,
+      heatmapData,
+      ownershipData,
+      issuesData,
+      churnData,
+      commitMessageQualityData,
+      cyclomaticData,
+      commitActivityData,
+    };
+
+    const hasMetrics = Object.values(metrics).some((value) => value !== null);
+    if (!hasMetrics) return;
+
+    reportSavedRef.current = true;
+    saveReport({
+      repository: selectedSource,
+      sourceType,
+      spl,
+      selectedOptions: selectedOptions || [],
+      metrics,
+    }).catch((err) => setReportSaveError(err.message));
+  }, [loading, selectedSource, sourceType, spl, selectedOptions, commitData, locData, heatmapData, ownershipData, issuesData, churnData, commitMessageQualityData, cyclomaticData, commitActivityData]);
 
   const renderFeatureErrorCard = (title, errorMessage) => (
     <div className="metric-card">
@@ -390,8 +428,20 @@ export default function ResultPage() {
     <div className="result-shell">
       <header className="result-header">
         <h1>Repo Metrics — <span>{repoName}</span></h1>
-        <button className="header-back" onClick={() => navigate("/home")}>← Back</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {localStorage.getItem("current_user") && (
+            <button onClick={() => navigate("/profile")} style={{ background: "none", border: "none", cursor: "pointer", color: "#e9d5ff" }}>
+              <User size={20} />
+            </button>
+          )}
+          <button className="header-back" onClick={() => navigate("/home")}>← Back</button>
+        </div>
       </header>
+      {reportSaveError && (
+        <p style={{ color: "#fca5a5", fontFamily: "var(--mono)", margin: "6px 16px" }}>
+          Failed to save report: {reportSaveError}
+        </p>
+      )}
 
       <div className="result-body">
         <div className="metrics-panel">

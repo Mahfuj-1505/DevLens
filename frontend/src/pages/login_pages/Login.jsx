@@ -22,7 +22,7 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
     };
 
     const validateEmail = (email) => {
-        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        const emailRegex = /^[^\s@]+@iit\.du\.ac\.bd$/;
         return emailRegex.test(email);
     };
 
@@ -37,7 +37,7 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
         }
 
         if(!validateEmail(formData.email)) {
-            setError('Please enter a valid email address');
+            setError('Email must be an @iit.du.ac.bd address');
             setLoading(false);
             return;
         }
@@ -64,8 +64,12 @@ const Login = ({ onBack, onRegister, onLoginSuccess, onForgotPassword}) => {
                 email: data.user.email,
                 firstName: data.user.firstName,
                 lastName: data.user.lastName,
+                role: data.user.role,
+                batch: data.user.batch,
+                roll: data.user.roll,
                 token: data.access_token
             };
+            localStorage.setItem("current_user", JSON.stringify(userData));
 
             onLoginSuccess(userData);
         } catch (err) {

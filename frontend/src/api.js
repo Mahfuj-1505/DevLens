@@ -5,6 +5,11 @@ const api = {
 
 export {api};
 
+function getAuthHeaders() {
+  const token = localStorage.getItem("access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 function buildSourcePayload(source, spl = null) {
   if (typeof source === "string") {
     return { sourceType: "github", githubUrl: source, spl };
@@ -61,6 +66,47 @@ export async function analyzeGithubRepo(source, spl = null) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function saveReport(payload) {
+  const response = await fetch(`${api.baseURL}/reports`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Failed to save report");
+  return data;
+}
+
+export async function fetchReports() {
+  const response = await fetch(`${api.baseURL}/reports`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Failed to load reports");
+  return data.reports || [];
+}
+
+export async function compareReports(leftId, rightId) {
+  const query = new URLSearchParams({ leftId, rightId });
+  const response = await fetch(`${api.baseURL}/reports/compare?${query.toString()}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || "Failed to compare reports");
+  return data;
 }
 
 export async function analyzeHeatmap(source) {

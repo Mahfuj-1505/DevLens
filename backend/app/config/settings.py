@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "mysql+pymysql://devlens_db_user:DevlensUser%40pass123@localhost:3306/devlens_db"    
+    MONGODB_URI: str = ""
+    DATABASE_NAME: str = "devlens-db"
     
     # JWT Security
     SECRET_KEY: str

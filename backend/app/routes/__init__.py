@@ -1,4 +1,4 @@
 """Routes package initialization"""
-from . import auth, analysis
+from . import auth, analysis, reports
 
-__all__ = ["auth", "analysis"]
+__all__ = ["auth", "analysis", "reports"]

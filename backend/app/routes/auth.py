@@ -19,6 +19,12 @@ from app.utils.auth import (
     decode_access_token
 )
 from app.config.settings import get_settings
+from app.utils.user_roles import (
+    is_iit_email,
+    detect_role,
+    extract_batch_and_roll,
+    normalize_email,
+)
 
 settings = get_settings()
 
@@ -74,9 +80,36 @@ class UserResponse(BaseModel):
     email: str
     firstName: str
     lastName: str
+    role: str
+    batch: int | None = None
+    roll: str | None = None
 
     class Config:
         from_attributes = True
+
+
+def get_authenticated_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_exception
+
+    email: str = payload.get("sub")
+    if email is None:
+        raise credentials_exception
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
 
 # ==================== Authentication Routes ====================
@@ -94,6 +127,13 @@ async def register_user(user_data: UserRegistration, db: Session = Depends(get_d
     """
     
     # Validate passwords match
+    normalized_email = normalize_email(user_data.email)
+    if not is_iit_email(normalized_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only @iit.du.ac.bd email accounts are allowed",
+        )
+
     if user_data.password != user_data.confirmPassword:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -109,7 +149,7 @@ async def register_user(user_data: UserRegistration, db: Session = Depends(get_d
         )
     
     # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
+    existing_user = db.query(User).filter(User.email == normalized_email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -121,9 +161,9 @@ async def register_user(user_data: UserRegistration, db: Session = Depends(get_d
     new_user = User(
         firstname=user_data.firstName,
         lastname=user_data.lastName,
-        email=user_data.email,
+        email=normalized_email,
         password=hashed_password,
-        role="user"
+        role=detect_role(normalized_email),
     )
     
     try:
@@ -136,7 +176,8 @@ async def register_user(user_data: UserRegistration, db: Session = Depends(get_d
             "user": {
                 "email": new_user.email,
                 "firstName": new_user.firstname,
-                "lastName": new_user.lastname
+                "lastName": new_user.lastname,
+                "role": new_user.role,
             }
         }
     except Exception as e:
@@ -159,7 +200,15 @@ async def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     """
     
     # Find user by email
-    user = db.query(User).filter(User.email == user_data.email).first()
+    normalized_email = normalize_email(user_data.email)
+    if not is_iit_email(normalized_email):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Only @iit.du.ac.bd users can log in",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = db.query(User).filter(User.email == normalized_email).first()
     
     if not user:
         raise HTTPException(
@@ -179,9 +228,10 @@ async def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email},
+        data={"sub": user.email, "role": user.role},
         expires_delta=access_token_expires
     )
+    batch, roll = extract_batch_and_roll(user.email)
     
     return {
         "access_token": access_token,
@@ -189,41 +239,30 @@ async def login_user(user_data: UserLogin, db: Session = Depends(get_db)):
         "user": {
             "email": user.email,
             "firstName": user.firstname,
-            "lastName": user.lastname
+            "lastName": user.lastname,
+            "role": user.role,
+            "batch": batch,
+            "roll": roll,
         }
     }
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def get_current_user(user: User = Depends(get_authenticated_user)):
     """
     Get current authenticated user information
     
     Requires valid JWT token in Authorization header
     """
     
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    payload = decode_access_token(token)
-    if payload is None:
-        raise credentials_exception
-    
-    email: str = payload.get("sub")
-    if email is None:
-        raise credentials_exception
-    
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    
+    batch, roll = extract_batch_and_roll(user.email)
     return UserResponse(
         email=user.email,
         firstName=user.firstname,
-        lastName=user.lastname
+        lastName=user.lastname,
+        role=user.role,
+        batch=batch,
+        roll=roll,
     )
 
 
