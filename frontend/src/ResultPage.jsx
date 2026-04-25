@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn, analyzeCommitMessageQuality, analyzeCyclomaticComplexity, analyzeCommitActivity, saveReport } from "./api";
+import { analyzeCommits, analyzeGithubRepo, analyzeHeatmap, analyzeOwnership, analyzeIssues, analyzeChurn, analyzeCommitMessageQuality, analyzeCyclomaticComplexity, analyzeCommitActivity, analyzeClassDesign, saveReport } from "./api";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import ReportDownload from "./components/reportDownload";
 import HeatmapGrid from "./components/HeatmapGrid";
@@ -145,6 +145,7 @@ export default function ResultPage() {
   const [commitMessageQualityData, setCommitMessageQualityData] = useState(null);
   const [cyclomaticData, setCyclomaticData] = useState(null);
   const [commitActivityData, setCommitActivityData] = useState(null);
+  const [classDesignData, setClassDesignData] = useState(null);
   const [featureErrors, setFeatureErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [chatWidth, setChatWidth] = useState(340);
@@ -162,6 +163,7 @@ export default function ResultPage() {
   const showCyclomatic = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Cyclomatic Complexity");
   const showActivityGraph = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Activity graph") || hasOption(selectedOptions, "Activity Graph");
   const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
+  const showClassDesign = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Class and Component Design") || hasOption(selectedOptions, "WMC (Weighted Methods per Class)") || hasOption(selectedOptions, "LCOM (Lack of Cohesion of Methods)") || hasOption(selectedOptions, "DIT (Depth of Inheritance Tree)") || hasOption(selectedOptions, "NOC (Number of Children)");
   const showTesting = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "Test Coverage");
   const showCiCd = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "CI/CD Evidence");
 
@@ -185,6 +187,7 @@ export default function ResultPage() {
       commitMessageQualityData,
       cyclomaticData,
       commitActivityData,
+      classDesignData,
     };
 
     const hasMetrics = Object.values(metrics).some((value) => value !== null);
@@ -198,7 +201,7 @@ export default function ResultPage() {
       selectedOptions: selectedOptions || [],
       metrics,
     }).catch((err) => setReportSaveError(err.message));
-  }, [loading, selectedSource, sourceType, spl, selectedOptions, commitData, locData, heatmapData, ownershipData, issuesData, churnData, commitMessageQualityData, cyclomaticData, commitActivityData]);
+  }, [loading, selectedSource, sourceType, spl, selectedOptions, commitData, locData, heatmapData, ownershipData, issuesData, churnData, commitMessageQualityData, cyclomaticData, commitActivityData, classDesignData]);
 
   const renderFeatureErrorCard = (title, errorMessage) => (
     <div className="metric-card">
@@ -224,6 +227,7 @@ export default function ResultPage() {
     setCommitMessageQualityData(null);
     setCyclomaticData(null);
     setCommitActivityData(null);
+    setClassDesignData(null);
 
     const tasks = [];
 
@@ -290,6 +294,13 @@ export default function ResultPage() {
         onSuccess: setCommitActivityData,
       });
     }
+    if (showClassDesign) {
+      tasks.push({
+        key: "classDesign",
+        run: () => analyzeClassDesign(analysisSource, { language: "all" }),
+        onSuccess: setClassDesignData,
+      });
+    }
 
     if (!tasks.length) {
       setLoading(false);
@@ -332,6 +343,7 @@ export default function ResultPage() {
     if (showActivityGraph) msgs.push("Building GitHub-style commit activity graph...");
     if (showNamingConventions) msgs.push("Checking naming conventions...", "Ranking worst variable and function names...");
     if (showHeatmap) msgs.push("Building file change heatmap...");
+    if (showClassDesign) msgs.push("Analyzing class and component design...", "Computing WMC, LCOM, DIT, NOC metrics...");
     
     // SPL-specific messaging
     if (spl === "SPL-1") msgs.push("Processing complexity metrics...", "Finalizing SPL-1 analysis...");
@@ -340,7 +352,7 @@ export default function ResultPage() {
     
     msgs.push("Processing results...", "Collecting all results...", "Almost Done!");
     return msgs;
-  }, [showCommits, showLOC, showCodeDuplication, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, showTesting, showCiCd, spl]);
+  }, [showCommits, showLOC, showCodeDuplication, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, showClassDesign, showTesting, showCiCd, spl]);
 
   React.useEffect(() => {
     if (!loading) return;
@@ -833,15 +845,64 @@ export default function ResultPage() {
             </>
           )}
 
-          {/* SPL-2 Specific Features - Coming Soon */}
+          {/* SPL-2 Specific Features */}
           {spl === "SPL-2" && (
             <>
-              {!showCommits && <ComingSoon title="Class & Component Design" />}
+              {showClassDesign && classDesignData && (
+                <div className="metric-card">
+                  <h2>Class & Component Design</h2>
+                  <div className="stat-grid">
+                    <div className="stat-item"><div className="stat-label">Total Classes</div><div className="stat-value accent">{classDesignData.summary.totalClasses}</div></div>
+                    <div className="stat-item"><div className="stat-label">Avg WMC</div><div className="stat-value">{classDesignData.summary.averageWMC}</div></div>
+                    <div className="stat-item"><div className="stat-label">Avg LCOM</div><div className="stat-value">{classDesignData.summary.averageLCOM}</div></div>
+                    <div className="stat-item"><div className="stat-label">Max DIT</div><div className="stat-value">{classDesignData.summary.maxDIT}</div></div>
+                    <div className="stat-item"><div className="stat-label">Max NOC</div><div className="stat-value">{classDesignData.summary.maxNOC}</div></div>
+                  </div>
+                  <div style={{ marginTop: 16 }}>
+                    <h3 style={{ fontSize: "0.9rem", marginBottom: 8, color: "var(--text-secondary)" }}>Class Details</h3>
+                    <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 4, padding: 8 }}>
+                      <table style={{ width: "100%", fontSize: "0.75rem", fontFamily: "var(--mono)" }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                            <th style={{ textAlign: "left", padding: "4px 8px" }}>Class</th>
+                            <th style={{ textAlign: "center", padding: "4px 8px" }}>Language</th>
+                            <th style={{ textAlign: "center", padding: "4px 8px" }}>WMC</th>
+                            <th style={{ textAlign: "center", padding: "4px 8px" }}>LCOM</th>
+                            <th style={{ textAlign: "center", padding: "4px 8px" }}>DIT</th>
+                            <th style={{ textAlign: "center", padding: "4px 8px" }}>NOC</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {classDesignData.classes.slice(0, 20).map((cls, index) => (
+                            <tr key={index} style={{ borderBottom: "1px solid var(--border-light)" }}>
+                              <td style={{ padding: "4px 8px", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }} title={cls.className}>
+                                {cls.className}
+                              </td>
+                              <td style={{ textAlign: "center", padding: "4px 8px" }}>{cls.language}</td>
+                              <td style={{ textAlign: "center", padding: "4px 8px" }}>{cls.metrics.WMC}</td>
+                              <td style={{ textAlign: "center", padding: "4px 8px" }}>{cls.metrics.LCOM}</td>
+                              <td style={{ textAlign: "center", padding: "4px 8px" }}>{cls.metrics.DIT}</td>
+                              <td style={{ textAlign: "center", padding: "4px 8px" }}>{cls.metrics.NOC}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {classDesignData.classes.length > 20 && (
+                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "center", marginTop: 8 }}>
+                          Showing top 20 classes — {classDesignData.classes.length - 20} more...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {showClassDesign && !classDesignData && featureErrors.classDesign && renderFeatureErrorCard("Class & Component Design", featureErrors.classDesign)}
+              {!showClassDesign && <ComingSoon title="Class & Component Design" />}
               {!showChurn && <ComingSoon title="Feature Branching & Merging" />}
             </>
           )}
 
-          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !showChurn && !showCommitMessageQuality && !showCyclomatic && !showActivityGraph && !showNamingConventions && !isDefault && (
+          {!showLOC && !showCommits && !showHeatmap && !showOwnership && !showIssues && !showChurn && !showCommitMessageQuality && !showCyclomatic && !showActivityGraph && !showNamingConventions && !showClassDesign && !isDefault && (
             <div className="empty-state">No supported options selected.</div>
           )}
 
@@ -857,6 +918,7 @@ export default function ResultPage() {
             commitMessageQualityData={commitMessageQualityData}
             cyclomaticData={cyclomaticData}
             commitActivityData={commitActivityData}
+            classDesignData={classDesignData}
             visibleMetrics={{
               loc: showLOC,
               commits: showCommits,
@@ -868,6 +930,7 @@ export default function ResultPage() {
               cyclomatic: showCyclomatic,
               activityGraph: showActivityGraph,
               namingConventions: showNamingConventions,
+              classDesign: showClassDesign,
             }}
           />
 

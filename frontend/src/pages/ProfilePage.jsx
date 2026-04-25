@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchReports } from "../api";
 import { User } from 'lucide-react';
+import "./ProfilePage.css";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -40,44 +41,91 @@ export default function ProfilePage() {
 
   const handleCompare = () => {
     if (selectedReports.length === 2) {
-      // Navigate to compare with selected ids
       navigate(`/compare?left=${selectedReports[0]}&right=${selectedReports[1]}`);
     }
   };
 
-  if (!user) return <div>Loading...</div>;
+  if (!user) return <div className="loading-screen">Loading...</div>;
 
   return (
-    <div style={{ padding: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+    <div className="profile-page">
+
+      {/* Header */}
+      <div className="profile-header">
         <h2>Profile</h2>
-        <button onClick={() => navigate("/profile")} style={{ background: "none", border: "none", cursor: "pointer" }}>
-          <User size={24} />
+        <button onClick={() => navigate("/profile")} className="icon-btn">
+          <User size={20} />
         </button>
       </div>
-      <button onClick={() => navigate("/home")} style={{ marginBottom: 12 }}>Back to Home</button>
 
-      <div style={{ marginBottom: 24 }}>
-        <h3>User Information</h3>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>Role:</strong> {user.role}</p>
-        {user.batch && <p><strong>Batch:</strong> {user.batch}</p>}
-        {user.roll && <p><strong>Roll:</strong> {user.roll}</p>}
-        <p><strong>First Name:</strong> {user.firstName}</p>
-        <p><strong>Last Name:</strong> {user.lastName}</p>
+      {/* Back button */}
+      <button onClick={() => navigate("/home")} className="btn btn-back">
+        Back to Home
+      </button>
+
+      {/* User Info */}
+      <div className="glass-card user-info-card">
+        <p className="card-section-label">User Information</p>
+
+        <div className="info-grid">
+          <div className="info-item">
+            <span className="info-label">Email</span>
+            <span className="info-value">{user.email}</span>
+          </div>
+
+          <div className="info-item">
+            <span className="info-label">Role</span>
+            <span className="role-badge">{user.role}</span>
+          </div>
+
+          {user.batch && (
+            <div className="info-item">
+              <span className="info-label">Batch</span>
+              <span className="info-value">{user.batch}</span>
+            </div>
+          )}
+
+          {user.roll && (
+            <div className="info-item">
+              <span className="info-label">Roll</span>
+              <span className="info-value">{user.roll}</span>
+            </div>
+          )}
+
+          <div className="info-item">
+            <span className="info-label">First Name</span>
+            <span className="info-value">{user.firstName}</span>
+          </div>
+
+          <div className="info-item">
+            <span className="info-label">Last Name</span>
+            <span className="info-value">{user.lastName}</span>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <h3>{user.role === "teacher" ? "All Reports" : "Your Reports"}</h3>
-        {reportError && <p style={{ color: "crimson" }}>{reportError}</p>}
-        {!reports.length && !reportError && <p>No reports available.</p>}
-        {user.role === "teacher" && selectedReports.length === 2 && (
-          <button onClick={handleCompare} style={{ marginBottom: 12 }}>Compare Selected Reports</button>
+      {/* Reports */}
+      <div className="glass-card reports-card">
+        <div className="reports-header">
+          <h3>{user.role === "teacher" ? "All Reports" : "Your Reports"}</h3>
+
+          {user.role === "teacher" && selectedReports.length === 2 && (
+            <button onClick={handleCompare} className="btn btn-primary">
+              Compare Selected
+            </button>
+          )}
+        </div>
+
+        {reportError && <div className="error-msg">{reportError}</div>}
+
+        {!reports.length && !reportError && (
+          <div className="empty-msg">No reports available.</div>
         )}
+
         {!!reports.length && (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table className="reports-table">
             <thead>
-              <tr style={{ background: "#f0f0f0" }}>
+              <tr>
                 {user.role === "teacher" && <th>Select</th>}
                 <th>User Email</th>
                 <th>Repository</th>
@@ -89,9 +137,8 @@ export default function ProfilePage() {
             </thead>
             <tbody>
               {reports.map((report) => (
-                <tr 
-                  key={report.id} 
-                  style={{ borderBottom: "1px solid #ddd", cursor: "pointer" }}
+                <tr
+                  key={report.id}
                   onClick={() => navigate('/view-report', { state: { report } })}
                 >
                   {user.role === "teacher" && (
@@ -100,15 +147,19 @@ export default function ProfilePage() {
                         type="checkbox"
                         checked={selectedReports.includes(report.id)}
                         onChange={() => handleSelectReport(report.id)}
-                        disabled={selectedReports.length >= 2 && !selectedReports.includes(report.id)}
+                        disabled={
+                          selectedReports.length >= 2 &&
+                          !selectedReports.includes(report.id)
+                        }
                       />
                     </td>
                   )}
+
                   <td>{report.userEmail}</td>
                   <td>{report.repository}</td>
-                  <td>{report.batch ?? "N/A"}</td>
-                  <td>{report.roll ?? "N/A"}</td>
-                  <td>{report.spl ?? "N/A"}</td>
+                  <td>{report.batch ?? <span className="na-text">N/A</span>}</td>
+                  <td>{report.roll ?? <span className="na-text">N/A</span>}</td>
+                  <td>{report.spl ?? <span className="na-text">N/A</span>}</td>
                   <td>{new Date(report.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
@@ -116,6 +167,7 @@ export default function ProfilePage() {
           </table>
         )}
       </div>
+
     </div>
   );
 }

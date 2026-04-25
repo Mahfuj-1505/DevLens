@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     DATABASE_NAME: str = "devlens-db"
     
     # JWT Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "devlens-secret"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     

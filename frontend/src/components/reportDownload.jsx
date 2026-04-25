@@ -11,6 +11,7 @@ export default function ReportDownload({
   commitMessageQualityData,
   cyclomaticData,
   commitActivityData,
+  classDesignData,
   visibleMetrics = {},
 }) {
   const [busy, setBusy] = useState(false);
@@ -172,6 +173,21 @@ export default function ReportDownload({
       churnData.files.forEach((f) =>
         rows.push([f.file, f.additions, f.deletions, f.commits, f.churnRate])
       );
+    }
+
+    if (visibleMetrics.classDesign && classDesignData) {
+      rows.push(["=== Class & Component Design ==="]);
+      rows.push(["Total Classes", classDesignData.summary.totalClasses]);
+      rows.push(["Average WMC", classDesignData.summary.averageWMC]);
+      rows.push(["Average LCOM", classDesignData.summary.averageLCOM]);
+      rows.push(["Max DIT", classDesignData.summary.maxDIT]);
+      rows.push(["Max NOC", classDesignData.summary.maxNOC]);
+      rows.push([]);
+      rows.push(["Class", "Language", "File", "WMC", "LCOM", "DIT", "NOC"]);
+      (classDesignData.classes || []).forEach((c) =>
+        rows.push([c.className, c.language, c.filePath, c.metrics.WMC, c.metrics.LCOM, c.metrics.DIT, c.metrics.NOC])
+      );
+      rows.push([]);
     }
 
     return rows.map((r) => r.map(escapeCSV).join(",")).join("\n");
@@ -397,6 +413,29 @@ export default function ReportDownload({
       </tbody></table></div>`;
     }
 
+    if (visibleMetrics.classDesign && classDesignData) {
+      html += `<div class="section"><h2>Class & Component Design</h2><div class="grid">
+        ${stat("Total Classes", classDesignData.summary.totalClasses)}
+        ${stat("Avg WMC", classDesignData.summary.averageWMC)}
+        ${stat("Avg LCOM", classDesignData.summary.averageLCOM)}
+        ${stat("Max DIT", classDesignData.summary.maxDIT)}
+        ${stat("Max NOC", classDesignData.summary.maxNOC)}
+      </div>
+      <table><thead><tr><th>Class</th><th>Language</th><th style="text-align:right">WMC</th><th style="text-align:right">LCOM</th><th style="text-align:right">DIT</th><th style="text-align:right">NOC</th></tr></thead><tbody>
+      ${(classDesignData.classes || [])
+        .slice(0, 20)
+        .map((c) => `<tr>
+          <td>${c.className}</td>
+          <td>${c.language}</td>
+          <td style="text-align:right">${c.metrics.WMC}</td>
+          <td style="text-align:right">${c.metrics.LCOM}</td>
+          <td style="text-align:right">${c.metrics.DIT}</td>
+          <td style="text-align:right">${c.metrics.NOC}</td>
+        </tr>`)
+        .join("")}
+      </tbody></table></div>`;
+    }
+
     html += `<div class="footer">DevLens · ${repoName} · ${now()}</div></body></html>`;
 
     const win = window.open("", "_blank");
@@ -418,7 +457,8 @@ export default function ReportDownload({
     (visibleMetrics.commitMessageQuality && commitMessageQualityData) ||
     (visibleMetrics.cyclomatic && cyclomaticData) ||
     (visibleMetrics.activityGraph && commitActivityData) ||
-    (visibleMetrics.namingConventions && locData?.namingQuality);
+    (visibleMetrics.namingConventions && locData?.namingQuality) ||
+    (visibleMetrics.classDesign && classDesignData);
   if (!hasData) return null;
 
   const btnBase = {

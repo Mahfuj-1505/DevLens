@@ -380,3 +380,28 @@ export async function analyzeCommitActivity(source, { weeks = 26 } = {}) {
     clearTimeout(timeout);
   }
 }
+
+export async function analyzeClassDesign(source, { language = "all" } = {}) {
+  const query = `${buildSourceQuery(source)}&language=${language}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes
+
+  try {
+    const response = await fetch(
+      `${api.baseURL}/repositories/class-design?${query}`,
+      { method: "GET", headers: { "Content-Type": "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Failed to fetch class design metrics");
+    }
+    return response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Class design analysis timed out after 3 minutes.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

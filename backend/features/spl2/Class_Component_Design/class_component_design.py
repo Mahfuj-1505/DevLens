@@ -28,26 +28,36 @@ class ClassComponentDesign:
         "cpp": {".cpp", ".cc", ".cxx", ".hpp", ".h"},
     }
 
-    def get_metrics(self, github_url: str, language: str | None = None) -> dict:
+    def get_metrics(self, repo_source: str, source_type: str = "github", language: str | None = None) -> dict:
         selected_language = (language or "all").strip().lower()
         if selected_language not in {"all", "python", "java", "cpp"}:
             raise ValueError("language must be one of: all, python, java, cpp")
 
-        clone_dir = tempfile.mkdtemp(prefix="devlens_class_design_")
-        try:
-            result = subprocess.run(
-                ["git", "clone", "--quiet", github_url, clone_dir],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            if result.returncode != 0:
-                raise ValueError(f"Failed to clone repository: {result.stderr.strip()}")
+        repo_root = None
+        clone_dir = None
+        if source_type == "github":
+            clone_dir = tempfile.mkdtemp(prefix="devlens_class_design_")
+            try:
+                result = subprocess.run(
+                    ["git", "clone", "--quiet", "--depth", "1", repo_source, clone_dir],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,  # 60 second timeout for cloning
+                )
+                if result.returncode != 0:
+                    raise ValueError(f"Failed to clone repository: {result.stderr.strip()}")
+                repo_root = clone_dir
+            except subprocess.TimeoutExpired:
+                raise ValueError("Failed to clone repository: operation timed out")
+        else:
+            if not os.path.isdir(repo_source):
+                raise ValueError(f"Local repository path does not exist: {repo_source}")
+            repo_root = repo_source
 
-            classes = self._analyze_repository(clone_dir, selected_language)
+        try:
+            classes = self._analyze_repository(repo_root, selected_language)
             if not classes:
-                return {
-                    "githubUrl": github_url,
+                output = {
                     "summary": {
                         "totalClasses": 0,
                         "languages": {"python": 0, "java": 0, "cpp": 0},
@@ -58,6 +68,11 @@ class ClassComponentDesign:
                     },
                     "classes": [],
                 }
+                if source_type == "github":
+                    output["githubUrl"] = repo_source
+                else:
+                    output["localPath"] = repo_source
+                return output
 
             noc_map, dit_map = self._build_inheritance_metrics(classes)
             class_rows = []
@@ -98,8 +113,8 @@ class ClassComponentDesign:
                 "cpp": sum(1 for c in classes if c.language == "cpp"),
             }
 
-            return {
-                "githubUrl": github_url,
+            response = {
+                "sourceType": source_type,
                 "summary": {
                     "totalClasses": total_classes,
                     "languages": lang_counts,
@@ -110,16 +125,41 @@ class ClassComponentDesign:
                 },
                 "classes": class_rows,
             }
+            if source_type == "github":
+                response["githubUrl"] = repo_source
+            else:
+                response["localPath"] = repo_source
+            return response
         finally:
             shutil.rmtree(clone_dir, ignore_errors=True)
 
     def _analyze_repository(self, repo_root: str, selected_language: str) -> list[ClassInfo]:
         classes: list[ClassInfo] = []
+        max_files = 10000  # Limit to prevent excessive processing
+        processed_files = 0
+        
         for root, dirs, files in os.walk(repo_root):
-            dirs[:] = [d for d in dirs if d not in {".git", "node_modules", "venv", ".venv", "dist", "build"}]
+            # Skip common non-source directories
+            dirs[:] = [d for d in dirs if d not in {
+                ".git", "node_modules", "venv", ".venv", "dist", "build", 
+                "__pycache__", ".pytest_cache", ".tox", ".eggs", "*.egg-info",
+                ".vscode", ".idea", "target", "bin", "obj", ".gradle", ".mvn"
+            }]
+            
             for filename in files:
+                if processed_files >= max_files:
+                    break
+                    
                 full_path = os.path.join(root, filename)
                 relative_path = os.path.relpath(full_path, repo_root)
+                
+                # Skip files that are too large (> 1MB)
+                try:
+                    if os.path.getsize(full_path) > 1024 * 1024:
+                        continue
+                except OSError:
+                    continue
+                
                 extension = os.path.splitext(filename)[1].lower()
                 lang = self._language_for_extension(extension)
                 if not lang:
@@ -139,6 +179,11 @@ class ClassComponentDesign:
                     classes.extend(self._parse_java_classes(content, relative_path))
                 elif lang == "cpp":
                     classes.extend(self._parse_cpp_classes(content, relative_path))
+                
+                processed_files += 1
+            
+            if processed_files >= max_files:
+                break
 
         return classes
 
@@ -479,25 +524,31 @@ class ClassComponentDesign:
 
         noc_map = {class_id: len(children) for class_id, children in child_map.items()}
 
-        depth_cache: dict[str, int] = {}
+        # Optimized DIT calculation using iterative approach
+        dit_map: dict[str, int] = {}
+        # Start with classes that have no parents (depth 0)
+        queue = [class_id for class_id in classes_by_id.keys() if not parent_map.get(class_id)]
+        depths = {class_id: 0 for class_id in queue}
+        
+        while queue:
+            current_id = queue.pop(0)
+            current_depth = depths[current_id]
+            dit_map[current_id] = current_depth
+            
+            # Process children
+            for child_id in child_map.get(current_id, set()):
+                if child_id not in depths:
+                    depths[child_id] = current_depth + 1
+                    queue.append(child_id)
+                else:
+                    # Update depth if we found a longer path
+                    depths[child_id] = max(depths[child_id], current_depth + 1)
+        
+        # Handle remaining classes (those in inheritance cycles or not reached)
+        for class_id in classes_by_id.keys():
+            if class_id not in dit_map:
+                dit_map[class_id] = 0  # Default to 0 for cycles or disconnected classes
 
-        def compute_depth(class_id: str, visiting: set[str]) -> int:
-            if class_id in depth_cache:
-                return depth_cache[class_id]
-            if class_id in visiting:
-                return 0
-
-            parents = parent_map.get(class_id, set())
-            if not parents:
-                depth_cache[class_id] = 0
-                return 0
-
-            visiting.add(class_id)
-            depth_cache[class_id] = 1 + max(compute_depth(parent_id, visiting) for parent_id in parents)
-            visiting.remove(class_id)
-            return depth_cache[class_id]
-
-        dit_map = {class_id: compute_depth(class_id, set()) for class_id in classes_by_id.keys()}
         return noc_map, dit_map
 
     def _compute_lcom(self, method_fields: dict[str, set[str]]) -> int:
