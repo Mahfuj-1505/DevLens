@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 
 export default function RepoForm({
   repoSource,
@@ -9,22 +9,63 @@ export default function RepoForm({
   submittedSource,
   submittedSourceType,
 }) {
+  const [activeSourceTypeDropdown, setActiveSourceTypeDropdown] = useState(false);
+  const sourceTypeDropdownRef = useRef(null);
+
   const placeholder =
     sourceType === "local"
       ? "Enter local repository path..."
       : "Enter GitHub repository link...";
 
+  const sourceTypeOptions = [
+    { value: "github", label: "Repo link" },
+    { value: "local", label: "Local path" },
+  ];
+
+  React.useEffect(() => {
+    function handleOutsideClick(event) {
+      if (
+        activeSourceTypeDropdown &&
+        sourceTypeDropdownRef.current &&
+        !sourceTypeDropdownRef.current.contains(event.target)
+      ) {
+        setActiveSourceTypeDropdown(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [activeSourceTypeDropdown]);
+
   return (
     <div>
       <form className="repo-form" onSubmit={handleSubmit}>
-        <select
-          className="repo-input"
-          value={sourceType}
-          onChange={(e) => setSourceType(e.target.value)}
-        >
-          <option value="github">Repo link</option>
-          <option value="local">Local path</option>
-        </select>
+        <div className="repo-source-dropdown" ref={sourceTypeDropdownRef}>
+          <button
+            type="button"
+            className="repo-source-toggle"
+            onClick={() => setActiveSourceTypeDropdown((prev) => !prev)}
+          >
+            {sourceTypeOptions.find((opt) => opt.value === sourceType)?.label}
+            <span className={`repo-source-arrow ${activeSourceTypeDropdown ? "open" : ""}`} />
+          </button>
+          {activeSourceTypeDropdown && (
+            <ul className="repo-source-menu">
+              {sourceTypeOptions.map((option) => (
+                <li
+                  key={option.value}
+                  className={`repo-source-item ${sourceType === option.value ? "active" : ""}`}
+                  onClick={() => {
+                    setSourceType(option.value);
+                    setActiveSourceTypeDropdown(false);
+                  }}
+                >
+                  {option.label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <input
           type="text"
           className="repo-input"

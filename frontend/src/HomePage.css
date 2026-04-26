@@ -70,6 +70,71 @@ html, body {
   width: 100%;
 }
 
+.repo-source-dropdown {
+  position: relative;
+}
+
+.repo-source-toggle {
+  padding: 14px 20px;
+  font-size: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  outline: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.repo-source-toggle:hover {
+  border-color: #a855f7;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.repo-source-arrow {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+
+.repo-source-arrow.open {
+  transform: rotate(-135deg);
+}
+
+.repo-source-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: rgba(31, 41, 55, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+  padding: 6px 0;
+  min-width: 140px;
+}
+
+.repo-source-item {
+  padding: 10px 16px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+
+.repo-source-item:hover,
+.repo-source-item.active {
+  background: rgba(168, 85, 247, 0.15);
+}
+
 .repo-input {
   width: 600px;
   padding: 14px 20px;

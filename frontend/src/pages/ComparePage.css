@@ -46,6 +46,68 @@
   outline: none;
 }
 
+.compare-select-dropdown {
+  position: relative;
+}
+
+.compare-select-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: white;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compare-select-arrow {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+  margin-left: 12px;
+}
+
+.compare-select-arrow.open {
+  transform: rotate(-135deg);
+}
+
+.compare-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+  padding: 8px 0;
+}
+
+.compare-dropdown-item {
+  padding: 10px 16px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.compare-dropdown-item:hover,
+.compare-dropdown-item.active {
+  background: rgba(167, 139, 250, 0.15);
+}
+
 .compare-button {
   background: linear-gradient(135deg, #a855f7, #9333ea);
   border: none;

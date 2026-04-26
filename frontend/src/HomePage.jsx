@@ -61,7 +61,16 @@ function App() {
         )}
         <p className="subtitle">Choose an SPL option below</p>
         {user?.role === "teacher" && (
-          <button onClick={() => navigate("/compare")}>Go to Compare Page</button>
+          <button
+            onClick={() => navigate("/compare")}
+            style={{
+            backgroundColor: 'transparent',
+            border: '1px solid white',
+            marginBottom: '15px'
+            }}
+          >
+            Go to Compare Page
+          </button>
         )}
 
         <RepoForm

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { compareReports, fetchReports } from "../api";
 import { User } from 'lucide-react';
@@ -13,6 +13,9 @@ export default function ComparePage() {
   const [rightId, setRightId] = useState(searchParams.get("right") || "");
   const [comparison, setComparison] = useState(null);
   const [error, setError] = useState("");
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const leftDropdownRef = useRef(null);
+  const rightDropdownRef = useRef(null);
 
   const runCompare = async () => {
     setError("");
@@ -44,6 +47,65 @@ export default function ComparePage() {
       runCompare();
     }
   }, [leftId, rightId, reports]);
+
+  useEffect(() => {
+    function handleOutsideClick(event) {
+      if (
+        activeDropdown === "left" &&
+        leftDropdownRef.current &&
+        !leftDropdownRef.current.contains(event.target)
+      ) {
+        setActiveDropdown(null);
+      }
+      if (
+        activeDropdown === "right" &&
+        rightDropdownRef.current &&
+        !rightDropdownRef.current.contains(event.target)
+      ) {
+        setActiveDropdown(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [activeDropdown]);
+
+  const reportLabel = (id) => {
+    if (!id) return "";
+    const report = reports.find((item) => item.id === id);
+    return report ? report.repository || report.id : id;
+  };
+
+  const renderReportOptions = (dropdownType) => {
+    const currentValue = dropdownType === "left" ? leftId : rightId;
+    const setValue = dropdownType === "left" ? setLeftId : setRightId;
+
+    return (
+      <ul className="compare-dropdown-menu">
+        <li
+          className={`compare-dropdown-item ${!currentValue ? "active" : ""}`}
+          onClick={() => {
+            setValue("");
+            setActiveDropdown(null);
+          }}
+        >
+          Choose {dropdownType} report
+        </li>
+        {reports.map((report) => (
+          <li
+            key={report.id}
+            className={`compare-dropdown-item ${currentValue === report.id ? "active" : ""}`}
+            onClick={() => {
+              setValue(report.id);
+              setActiveDropdown(null);
+            }}
+          >
+            {report.repository || report.id}
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   const getSummaryEntries = (group) => {
     if (!group || typeof group !== "object") return [];
@@ -120,35 +182,29 @@ export default function ComparePage() {
       <div className="result-body">
         <div className="compare-body">
           <div className="compare-controls">
-            <div className="compare-select-group">
-              <label htmlFor="left-report">Left report</label>
-              <select
-                id="left-report"
-                value={leftId}
-                onChange={(e) => setLeftId(e.target.value)}
+            <div className="compare-select-group compare-select-dropdown" ref={leftDropdownRef}>
+              <label>Left report</label>
+              <button
+                type="button"
+                className="compare-select-toggle"
+                onClick={() => setActiveDropdown((prev) => (prev === "left" ? null : "left"))}
               >
-                <option value="">Choose left report</option>
-                {reports.map((report) => (
-                  <option key={report.id} value={report.id}>
-                    {report.repository || report.id}
-                  </option>
-                ))}
-              </select>
+                {leftId ? reportLabel(leftId) : "Choose left report"}
+                <span className={`compare-select-arrow ${activeDropdown === "left" ? "open" : ""}`} />
+              </button>
+              {activeDropdown === "left" && renderReportOptions("left")}
             </div>
-            <div className="compare-select-group">
-              <label htmlFor="right-report">Right report</label>
-              <select
-                id="right-report"
-                value={rightId}
-                onChange={(e) => setRightId(e.target.value)}
+            <div className="compare-select-group compare-select-dropdown" ref={rightDropdownRef}>
+              <label>Right report</label>
+              <button
+                type="button"
+                className="compare-select-toggle"
+                onClick={() => setActiveDropdown((prev) => (prev === "right" ? null : "right"))}
               >
-                <option value="">Choose right report</option>
-                {reports.map((report) => (
-                  <option key={report.id} value={report.id}>
-                    {report.repository || report.id}
-                  </option>
-                ))}
-              </select>
+                {rightId ? reportLabel(rightId) : "Choose right report"}
+                <span className={`compare-select-arrow ${activeDropdown === "right" ? "open" : ""}`} />
+              </button>
+              {activeDropdown === "right" && renderReportOptions("right")}
             </div>
             <button className="compare-button" onClick={runCompare}>
               Compare

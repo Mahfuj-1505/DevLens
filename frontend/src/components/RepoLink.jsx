@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import './RepoLink.css';
 import { analyzeGithubRepo } from '../api';
@@ -8,6 +8,13 @@ export default function RepoLink() {
     const [sourceType, setSourceType] = useState('github');
     const [loading, setLoading] = useState(false);
     const [statusText, setStatusText] = useState('');
+    const [activeSourceTypeDropdown, setActiveSourceTypeDropdown] = useState(false);
+    const sourceTypeDropdownRef = useRef(null);
+
+    const sourceTypeOptions = [
+        { value: "github", label: "Repo link" },
+        { value: "local", label: "Local path" },
+    ];
 
     const handleSubmit = async () => {
         if (repoSource.trim()) {
@@ -31,19 +38,51 @@ export default function RepoLink() {
         }
     };
 
+    React.useEffect(() => {
+        function handleOutsideClick(event) {
+            if (
+                activeSourceTypeDropdown &&
+                sourceTypeDropdownRef.current &&
+                !sourceTypeDropdownRef.current.contains(event.target)
+            ) {
+                setActiveSourceTypeDropdown(false);
+            }
+        }
+
+        document.addEventListener("mousedown", handleOutsideClick);
+        return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }, [activeSourceTypeDropdown]);
+
     return (
         <div className="repo-input-wrapper">
             <div className="repo-input-container">
                 <div className={`input-box ${repoSource.trim() ? 'has-content' : ''}`}>
-                    <select
-                        value={sourceType}
-                        onChange={(e) => setSourceType(e.target.value)}
-                        className="repo-textarea"
-                        style={{ maxWidth: '180px', marginBottom: '8px' }}
-                    >
-                        <option value="github">Repo link</option>
-                        <option value="local">Local path</option>
-                    </select>
+                    <div className="repo-source-dropdown" ref={sourceTypeDropdownRef}>
+                        <button
+                            type="button"
+                            className="repo-source-toggle"
+                            onClick={() => setActiveSourceTypeDropdown((prev) => !prev)}
+                        >
+                            {sourceTypeOptions.find((opt) => opt.value === sourceType)?.label}
+                            <span className={`repo-source-arrow ${activeSourceTypeDropdown ? "open" : ""}`} />
+                        </button>
+                        {activeSourceTypeDropdown && (
+                            <ul className="repo-source-menu">
+                                {sourceTypeOptions.map((option) => (
+                                    <li
+                                        key={option.value}
+                                        className={`repo-source-item ${sourceType === option.value ? "active" : ""}`}
+                                        onClick={() => {
+                                            setSourceType(option.value);
+                                            setActiveSourceTypeDropdown(false);
+                                        }}
+                                    >
+                                        {option.label}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                     <textarea 
                         value={repoSource}
                         onChange={(e) => setRepoSource(e.target.value)}
