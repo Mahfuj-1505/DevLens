@@ -77,8 +77,16 @@ export async function saveReport(payload) {
     },
     body: JSON.stringify(payload),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || "Failed to save report");
+  const text = await response.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!response.ok) {
+    throw new Error(data.detail || text || "Failed to save report");
+  }
   return data;
 }
 

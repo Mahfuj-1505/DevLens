@@ -344,12 +344,12 @@ export default function ResultPage() {
     if (showNamingConventions) msgs.push("Checking naming conventions...", "Ranking worst variable and function names...");
     if (showHeatmap) msgs.push("Building file change heatmap...");
     if (showClassDesign) msgs.push("Analyzing class and component design...", "Computing WMC, LCOM, DIT, NOC metrics...");
-    
+
     // SPL-specific messaging
     if (spl === "SPL-1") msgs.push("Processing complexity metrics...", "Finalizing SPL-1 analysis...");
     if (spl === "SPL-2") msgs.push("Processing team metrics...", "Calculating design metrics...", "Finalizing SPL-2 analysis...");
     if (spl === "SPL-3") msgs.push("Analyzing testing infrastructure...", "Evaluating CI/CD maturity...", "Finalizing SPL-3 analysis...");
-    
+
     msgs.push("Processing results...", "Collecting all results...", "Almost Done!");
     return msgs;
   }, [showCommits, showLOC, showCodeDuplication, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, showClassDesign, showTesting, showCiCd, spl]);
@@ -526,7 +526,7 @@ export default function ResultPage() {
           )}
 
           {showCommits && commitData && (
-            <div className="metric-card">
+            <div className="metric-card" id="chart-commits">
               <h2>Commit Summary</h2>
               <div className="stat-grid">
                 <div className="stat-item"><div className="stat-label">Total Commits</div><div className="stat-value accent">{commitData.totalCommits}</div></div>
@@ -580,7 +580,7 @@ export default function ResultPage() {
                 {ownershipData.totalContributors} contributors — {ownershipData.totalCommits} total commits
               </p>
               <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ flex: 1, minWidth: 200 }} id="chart-ownership-commits">
                   <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>By Commits</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -592,7 +592,7 @@ export default function ResultPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ flex: 1, minWidth: 200 }} id="chart-ownership-lines">
                   <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>By Lines Added</p>
                   <ResponsiveContainer width="100%" height={220}>
                     <PieChart>
@@ -616,7 +616,7 @@ export default function ResultPage() {
                 {issuesData.totalIssues} total issues — {issuesData.openIssues} open, {issuesData.closedIssues} closed
               </p>
               <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                <div style={{ flex: "0 0 220px" }}>
+                <div style={{ flex: "0 0 220px" }} id="chart-issues">
                   <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", textAlign: "center", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Open vs Closed</p>
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
@@ -739,9 +739,11 @@ export default function ResultPage() {
               <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Files With High Complexity
               </p>
-              <ComplexityTreemap
-                items={(cyclomaticData.highComplexityFiles || []).map((file) => ({ path: file.file, complexity: file.maxFunctionComplexity }))}
-              />
+              <div id="chart-cyclomatic">
+                <ComplexityTreemap
+                  items={(cyclomaticData.highComplexityFiles || []).map((file) => ({ path: file.file, complexity: file.maxFunctionComplexity }))}
+                />
+              </div>
 
               <p style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "#c4b5fd", marginTop: 20, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 Highest Complexity Functions
@@ -778,7 +780,9 @@ export default function ResultPage() {
               <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", marginBottom: 14 }}>
                 Last {commitActivityData.weeks} weeks ({commitActivityData.dateRange?.from} to {commitActivityData.dateRange?.to})
               </p>
-              <CommitActivity activityData={commitActivityData} />
+              <div id="chart-activity">
+                <CommitActivity activityData={commitActivityData} />
+              </div>
             </div>
           )}
           {showActivityGraph && !commitActivityData && featureErrors.activityGraph && renderFeatureErrorCard("Commit Activity Graph", featureErrors.activityGraph)}
@@ -829,7 +833,9 @@ export default function ResultPage() {
               <p style={{ fontSize: "0.72rem", color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", marginBottom: 16 }}>
                 {heatmapData.totalUniqueFiles} unique files — showing top {Math.min(heatmapData.files.length, 20)} most changed
               </p>
-              <HeatmapGrid files={heatmapData.files.slice(0, 20)} />
+              <div id="chart-heatmap">
+                <HeatmapGrid files={heatmapData.files.slice(0, 20)} />
+              </div>
               <div style={{ display: "flex", gap: 20, marginTop: 14, fontSize: "0.65rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.5)", justifyContent: "center" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#4ade80", display: "inline-block" }} /> Low frequency</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: "#facc15", display: "inline-block" }} /> Moderate</span>
@@ -841,7 +847,7 @@ export default function ResultPage() {
 
           {isDefault && (
             <>
-              
+
             </>
           )}
 
@@ -897,8 +903,8 @@ export default function ResultPage() {
                 </div>
               )}
               {showClassDesign && !classDesignData && featureErrors.classDesign && renderFeatureErrorCard("Class & Component Design", featureErrors.classDesign)}
-              {!showClassDesign && <ComingSoon title="Class & Component Design" />}
-              {!showChurn && <ComingSoon title="Feature Branching & Merging" />}
+              {/* {!showClassDesign && <ComingSoon title="Class & Component Design" />} */}
+              {/* {!showChurn && <ComingSoon title="Feature Branching & Merging" />} */}
             </>
           )}
 

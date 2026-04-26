@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import html2canvas from "html2canvas";
 
 export default function ReportDownload({
   repoName,
@@ -15,25 +16,35 @@ export default function ReportDownload({
   visibleMetrics = {},
 }) {
   const [busy, setBusy] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
 
   const now = () => new Date().toLocaleString();
   const safeRepoName = repoName?.replace("/", "-") || "repo";
 
+  const C = {
+    bg: "#ffffff",
+    surface: "#f4f0fb",
+    border: "#d4c6f0",
+    text: "#1a0a2e",
+    muted: "#6b5a8a",
+    accent: "#7c3aed",
+    green: "#16a34a",
+    red: "#dc2626",
+    yellow: "#b45309",
+    rowAlt: "#faf7ff",
+  };
+
+  // ─── CSV ─────────────────────────────────────────────────────────────────────
   function buildCSV() {
     const rows = [];
     rows.push(["DevLens Report", repoName]);
     rows.push(["Generated", now()]);
     rows.push([]);
-
-    const escapeCSV = (value) => {
-      if (value === undefined || value === null) return "";
-      const text = String(value);
-      if (/[",\n]/.test(text)) {
-        return `"${text.replace(/"/g, '""')}"`;
-      }
-      return text;
+    const esc = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-
     if (visibleMetrics.loc && locData) {
       rows.push(["=== Lines of Code ==="]);
       rows.push(["Total LOC", locData.summary.totalLoc]);
@@ -43,7 +54,6 @@ export default function ReportDownload({
       rows.push(["Languages", locData.summary.languages?.join(", ")]);
       rows.push([]);
     }
-
     if (visibleMetrics.commits && commitData) {
       rows.push(["=== Commit Summary ==="]);
       rows.push(["Total Commits", commitData.totalCommits]);
@@ -54,19 +64,15 @@ export default function ReportDownload({
       rows.push(["Avg Files/Commit", commitData.summary.averageFilesChangedPerCommit]);
       rows.push([]);
     }
-
     if (visibleMetrics.ownership && ownershipData) {
       rows.push(["=== Code Ownership ==="]);
       rows.push(["Total Contributors", ownershipData.totalContributors]);
       rows.push(["Total Commits", ownershipData.totalCommits]);
       rows.push([]);
       rows.push(["Author", "Commits", "Lines Added"]);
-      ownershipData.contributors.forEach((c) =>
-        rows.push([c.author, c.commits, c.linesAdded])
-      );
+      ownershipData.contributors.forEach((c) => rows.push([c.author, c.commits, c.linesAdded]));
       rows.push([]);
     }
-
     if (visibleMetrics.issues && issuesData) {
       rows.push(["=== Issue Tracking ==="]);
       rows.push(["Total Issues", issuesData.totalIssues]);
@@ -74,12 +80,10 @@ export default function ReportDownload({
       rows.push(["Closed Issues", issuesData.closedIssues]);
       rows.push([]);
     }
-
     if (visibleMetrics.commitMessageQuality && commitMessageQualityData) {
       rows.push(["=== Commit Message Quality ==="]);
       rows.push(["Average Quality (%)", commitMessageQualityData.averageQuality]);
       rows.push(["Total Commits", commitMessageQualityData.totalCommits]);
-      rows.push(["Worst Messages Count", commitMessageQualityData.worstMessages?.length || 0]);
       rows.push([]);
       rows.push(["SHA", "Message", "Quality (%)", "Violations"]);
       (commitMessageQualityData.worstMessages || []).forEach((m) =>
@@ -87,81 +91,13 @@ export default function ReportDownload({
       );
       rows.push([]);
     }
-
     if (visibleMetrics.cyclomatic && cyclomaticData) {
       rows.push(["=== Cyclomatic Complexity ==="]);
       rows.push(["Average Complexity", cyclomaticData.averageCyclomaticComplexity]);
       rows.push(["Files Scanned", cyclomaticData.totalFilesAnalyzed]);
       rows.push(["Functions Analyzed", cyclomaticData.totalFunctions]);
-      rows.push(["High Complexity Threshold", cyclomaticData.highComplexityThreshold]);
-      rows.push([]);
-      rows.push(["High Complexity Files"]);
-      rows.push(["File", "Avg Complexity", "Max Function Complexity", "Function Count"]);
-      (cyclomaticData.highComplexityFiles || []).forEach((f) =>
-        rows.push([f.file, f.averageComplexity, f.maxFunctionComplexity, f.functionCount])
-      );
-      rows.push([]);
-      rows.push(["Highest Complexity Functions"]);
-      rows.push(["File", "Function", "Complexity", "NLOC", "Start Line", "End Line"]);
-      (cyclomaticData.highComplexityFunctions || []).forEach((f) =>
-        rows.push([f.file, f.name, f.complexity, f.nloc, f.lineStart, f.lineEnd])
-      );
       rows.push([]);
     }
-
-    if (visibleMetrics.namingConventions && locData?.namingQuality) {
-      rows.push(["=== Naming Conventions ==="]);
-      rows.push(["Overall Naming Quality (%)", Math.round(locData.namingQuality.percentage || 0)]);
-      rows.push(["Names Evaluated", locData.namingQuality.evaluatedNames || 0]);
-      rows.push([]);
-      rows.push(["Worst Names"]);
-      rows.push(["Name", "Type", "Language", "Score (%)", "Issues"]);
-      (locData.namingQuality.worstNames || []).slice(0, 20).forEach((item) =>
-        rows.push([
-          item.name,
-          item.type,
-          item.language,
-          item.score,
-          (item.issues || []).join("; ") || "No issues",
-        ])
-      );
-      rows.push([]);
-    }
-
-    if (visibleMetrics.activityGraph && commitActivityData) {
-      rows.push(["=== Commit Activity Graph ==="]);
-      rows.push(["Weeks", commitActivityData.weeks]);
-      rows.push(["Date From", commitActivityData.dateRange?.from]);
-      rows.push(["Date To", commitActivityData.dateRange?.to]);
-      rows.push(["Total Commits", commitActivityData.totalCommits]);
-      rows.push(["Average Weekly Commits", commitActivityData.insights?.averageWeeklyCommits]);
-      rows.push(["Max Daily Commits", commitActivityData.insights?.maxDailyCommits]);
-      rows.push([]);
-      rows.push(["Weekly Activity"]);
-      rows.push(["Week Start", "Commits"]);
-      (commitActivityData.weeklyActivity || []).forEach((w) =>
-        rows.push([w.weekStart, w.commits])
-      );
-      rows.push([]);
-      rows.push(["Daily Activity"]);
-      rows.push(["Date", "Weekday", "Commits"]);
-      (commitActivityData.dailyActivity || []).forEach((d) =>
-        rows.push([d.date, d.weekday, d.count])
-      );
-      rows.push([]);
-    }
-
-    if (visibleMetrics.heatmap && heatmapData) {
-      rows.push(["=== File Change Heatmap ==="]);
-      rows.push(["Total Unique Files", heatmapData.totalUniqueFiles]);
-      rows.push([]);
-      rows.push(["File", "Changes", "Heat", "Color"]);
-      (heatmapData.files || []).forEach((f) =>
-        rows.push([f.file, f.changes, f.heat, f.color])
-      );
-      rows.push([]);
-    }
-
     if (visibleMetrics.churn && churnData) {
       rows.push(["=== Churn Rate Summary ==="]);
       rows.push(["Overall Churn Rate (%)", churnData.summary.churnRate]);
@@ -174,30 +110,18 @@ export default function ReportDownload({
         rows.push([f.file, f.additions, f.deletions, f.commits, f.churnRate])
       );
     }
-
     if (visibleMetrics.classDesign && classDesignData) {
       rows.push(["=== Class & Component Design ==="]);
       rows.push(["Total Classes", classDesignData.summary.totalClasses]);
-      rows.push(["Average WMC", classDesignData.summary.averageWMC]);
-      rows.push(["Average LCOM", classDesignData.summary.averageLCOM]);
-      rows.push(["Max DIT", classDesignData.summary.maxDIT]);
-      rows.push(["Max NOC", classDesignData.summary.maxNOC]);
-      rows.push([]);
-      rows.push(["Class", "Language", "File", "WMC", "LCOM", "DIT", "NOC"]);
-      (classDesignData.classes || []).forEach((c) =>
-        rows.push([c.className, c.language, c.filePath, c.metrics.WMC, c.metrics.LCOM, c.metrics.DIT, c.metrics.NOC])
-      );
       rows.push([]);
     }
-
-    return rows.map((r) => r.map(escapeCSV).join(",")).join("\n");
+    return rows.map((r) => r.map(esc).join(",")).join("\n");
   }
 
   function downloadCSV() {
     setBusy(true);
     try {
-      const csv = buildCSV();
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([buildCSV()], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -209,244 +133,479 @@ export default function ReportDownload({
     }
   }
 
-  function downloadPDF() {
-    setBusy(true);
+  // ─── Core capture helper ─────────────────────────────────────────────────────
+  // waitMs: extra delay after scrollIntoView — increase for complex/canvas charts
+  async function elementToDataURL(selector, waitMs = 120) {
+    const el = typeof selector === "string"
+      ? document.querySelector(selector)
+      : selector;
+    if (!el) return null;
 
-    const style = `
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Courier New', monospace; background: #fff; color: #111; padding: 32px; font-size: 12px; }
-        h1 { font-size: 20px; margin-bottom: 4px; color: #4c1d95; }
-        .meta { color: #666; font-size: 11px; margin-bottom: 28px; }
-        h2 { font-size: 14px; margin: 24px 0 10px; padding-bottom: 4px; border-bottom: 1px solid #d1c4e9; color: #5b21b6; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px; }
-        .stat { background: #f5f3ff; border-radius: 6px; padding: 10px 14px; }
-        .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: #7c3aed; margin-bottom: 4px; }
-        .stat-value { font-size: 18px; font-weight: 700; color: #1e1b4b; }
-        .green { color: #15803d; }
-        .red { color: #b91c1c; }
-        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
-        th { text-align: left; padding: 6px 10px; background: #ede9fe; color: #4c1d95; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
-        td { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; }
-        tr:nth-child(even) td { background: #fafafa; }
-        .churn-high { color: #b91c1c; font-weight: 700; }
-        .churn-mid { color: #92400e; font-weight: 700; }
-        .churn-low { color: #166534; font-weight: 700; }
-        .footer { margin-top: 36px; font-size: 10px; color: #9ca3af; text-align: center; }
-        .section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 18px; }
-        @media print { body { padding: 18px; } }
-      </style>
-    `;
+    // Make sure the element is rendered and visible
+    el.scrollIntoView({ behavior: "instant", block: "center" });
+    await new Promise((r) => setTimeout(r, waitMs));
 
-    const stat = (label, value, cls = "") =>
-      `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value ${cls}">${value ?? "—"}</div></div>`;
+    // If the element has no painted area, bail early
+    if (el.offsetWidth === 0 || el.offsetHeight === 0) return null;
 
-    const churnColor = (rate) =>
-      rate > 80 ? "churn-high" : rate > 40 ? "churn-mid" : "churn-low";
+    const canvas = await html2canvas(el, {
+      backgroundColor: null, // transparent — preserve the element's own colours
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      foreignObjectRendering: false,
+      logging: false,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
+      width: el.offsetWidth,
+      height: el.offsetHeight,
+      windowWidth: el.offsetWidth,
+      windowHeight: el.offsetHeight,
+    });
 
-    let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${safeRepoName} Report</title>${style}</head><body>`;
-    html += `<h1>${repoName} — DevLens Report</h1>`;
-    html += `<div class="meta">Generated: ${now()}</div>`;
+    // If the result is blank (all transparent), return null so callers can fallback
+    const ctx = canvas.getContext("2d");
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const hasPixels = data.some((v, i) => i % 4 === 3 && v > 10); // any non-transparent pixel?
+    if (!hasPixels) return null;
 
-    if (visibleMetrics.loc && locData) {
-      html += `<div class="section"><h2>Lines of Code</h2><div class="grid">
-        ${stat("Total LOC", locData.summary.totalLoc?.toLocaleString())}
-        ${stat("Files", locData.summary.totalFiles)}
-        ${stat("Functions", locData.summary.totalFunctions)}
-        ${stat("Comments", locData.summary.totalComments)}
-      </div>`;
-      if (locData.summary.languages?.length) {
-        html += `<p style="font-size:11px;color:#555;margin-top:6px">Languages: ${locData.summary.languages.join(", ")}</p>`;
-      }
-      html += `</div>`;
-    }
-
-    if (visibleMetrics.commits && commitData) {
-      html += `<div class="section"><h2>Commit Summary</h2><div class="grid">
-        ${stat("Total Commits", commitData.totalCommits)}
-        ${stat("Total Additions", "+" + commitData.summary.totalAdditions?.toLocaleString(), "green")}
-        ${stat("Total Deletions", "-" + commitData.summary.totalDeletions?.toLocaleString(), "red")}
-        ${stat("Avg +/Commit", "+" + commitData.summary.averageAdditionsPerCommit, "green")}
-        ${stat("Avg -/Commit", "-" + commitData.summary.averageDeletionsPerCommit, "red")}
-        ${stat("Avg Files/Commit", commitData.summary.averageFilesChangedPerCommit)}
-      </div></div>`;
-    }
-
-    if (visibleMetrics.ownership && ownershipData) {
-      html += `<div class="section"><h2>Code Ownership</h2>
-        <p style="font-size:11px;color:#555;margin-bottom:8px">${ownershipData.totalContributors} contributors · ${ownershipData.totalCommits} total commits</p>
-        <table><thead><tr><th>Author</th><th>Commits</th><th>Lines Added</th></tr></thead><tbody>
-        ${ownershipData.contributors
-          .map((c) => `<tr><td>${c.author}</td><td>${c.commits}</td><td>${c.linesAdded?.toLocaleString()}</td></tr>`)
-          .join("")}
-        </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.issues && issuesData) {
-      html += `<div class="section"><h2>Issue Tracking</h2><div class="grid">
-        ${stat("Total Issues", issuesData.totalIssues)}
-        ${stat("Open", issuesData.openIssues, "red")}
-        ${stat("Closed", issuesData.closedIssues, "green")}
-      </div></div>`;
-    }
-
-    if (visibleMetrics.churn && churnData) {
-      html += `<div class="section"><h2>Churn Rate</h2><div class="grid">
-        ${stat("Overall Churn Rate", churnData.summary.churnRate + "%")}
-        ${stat("Total Additions", "+" + churnData.summary.totalAdditions?.toLocaleString(), "green")}
-        ${stat("Total Deletions", "-" + churnData.summary.totalDeletions?.toLocaleString(), "red")}
-        ${stat("Net Lines", churnData.summary.netLines?.toLocaleString())}
-      </div>
-      <table><thead><tr>
-        <th>File</th>
-        <th style="text-align:right">Additions</th>
-        <th style="text-align:right">Deletions</th>
-        <th style="text-align:right">Commits</th>
-        <th style="text-align:right">Churn Rate</th>
-      </tr></thead><tbody>
-      ${churnData.files
-        .map((f) => `<tr>
-          <td title="${f.file}">${f.file}</td>
-          <td style="text-align:right;color:#15803d">+${f.additions.toLocaleString()}</td>
-          <td style="text-align:right;color:#b91c1c">-${f.deletions.toLocaleString()}</td>
-          <td style="text-align:right">${f.commits}</td>
-          <td style="text-align:right" class="${churnColor(f.churnRate)}">${f.churnRate}%</td>
-        </tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.commitMessageQuality && commitMessageQualityData) {
-      html += `<div class="section"><h2>Commit Message Quality</h2><div class="grid">
-        ${stat("Average Quality", (commitMessageQualityData.averageQuality ?? "—") + "%")}
-        ${stat("Total Commits", commitMessageQualityData.totalCommits)}
-        ${stat("Worst Messages", commitMessageQualityData.worstMessages?.length || 0)}
-      </div>
-      <table><thead><tr><th>SHA</th><th>Message</th><th style="text-align:right">Quality</th><th style="text-align:right">Violations</th></tr></thead><tbody>
-      ${(commitMessageQualityData.worstMessages || [])
-        .map((m) => `<tr>
-          <td>${m.sha}</td>
-          <td>${m.message || "(empty subject)"}</td>
-          <td style="text-align:right">${m.qualityScore}%</td>
-          <td style="text-align:right">${m.violationCount}</td>
-        </tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.cyclomatic && cyclomaticData) {
-      html += `<div class="section"><h2>Cyclomatic Complexity</h2><div class="grid">
-        ${stat("Average Complexity", cyclomaticData.averageCyclomaticComplexity)}
-        ${stat("Functions", cyclomaticData.totalFunctions)}
-        ${stat("Files Scanned", cyclomaticData.totalFilesAnalyzed)}
-        ${stat("High Threshold", "≥ " + cyclomaticData.highComplexityThreshold)}
-      </div>
-      <p style="font-size:11px;color:#555;margin:8px 0 6px">Files with high complexity</p>
-      <table><thead><tr><th>File</th><th style="text-align:right">Avg</th><th style="text-align:right">Max</th><th style="text-align:right">Functions</th></tr></thead><tbody>
-      ${(cyclomaticData.highComplexityFiles || [])
-        .map((f) => `<tr>
-          <td>${f.file}</td>
-          <td style="text-align:right">${f.averageComplexity}</td>
-          <td style="text-align:right">${f.maxFunctionComplexity}</td>
-          <td style="text-align:right">${f.functionCount}</td>
-        </tr>`)
-        .join("")}
-      </tbody></table>
-      <p style="font-size:11px;color:#555;margin:12px 0 6px">Highest complexity functions</p>
-      <table><thead><tr><th>File</th><th>Function</th><th style="text-align:right">Complexity</th><th style="text-align:right">NLOC</th></tr></thead><tbody>
-      ${(cyclomaticData.highComplexityFunctions || [])
-        .map((f) => `<tr>
-          <td>${f.file}</td>
-          <td>${f.name}</td>
-          <td style="text-align:right">${f.complexity}</td>
-          <td style="text-align:right">${f.nloc}</td>
-        </tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.namingConventions && locData?.namingQuality) {
-      html += `<div class="section"><h2>Naming Conventions</h2><div class="grid">
-        ${stat("Overall Naming Quality", Math.round(locData.namingQuality.percentage || 0) + "%")}
-        ${stat("Names Evaluated", locData.namingQuality.evaluatedNames || 0)}
-        ${stat("Worst Names Listed", Math.min((locData.namingQuality.worstNames || []).length, 20))}
-      </div>
-      <table><thead><tr><th>Name</th><th>Type</th><th>Language</th><th>Issue</th><th style="text-align:right">Score</th></tr></thead><tbody>
-      ${(locData.namingQuality.worstNames || [])
-        .slice(0, 20)
-        .map((item) => `<tr>
-          <td>${item.name}</td>
-          <td>${item.type}</td>
-          <td>${item.language}</td>
-          <td>${(item.issues || []).join(", ") || "No issues"}</td>
-          <td style="text-align:right">${item.score}%</td>
-        </tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.activityGraph && commitActivityData) {
-      html += `<div class="section"><h2>Commit Activity Graph</h2><div class="grid">
-        ${stat("Weeks", commitActivityData.weeks)}
-        ${stat("Total Commits", commitActivityData.totalCommits)}
-        ${stat("Avg Weekly Commits", commitActivityData.insights?.averageWeeklyCommits)}
-        ${stat("Max Daily Commits", commitActivityData.insights?.maxDailyCommits)}
-      </div>
-      <p style="font-size:11px;color:#555;margin:8px 0 6px">Date range: ${commitActivityData.dateRange?.from} to ${commitActivityData.dateRange?.to}</p>
-      <table><thead><tr><th>Week Start</th><th style="text-align:right">Commits</th></tr></thead><tbody>
-      ${(commitActivityData.weeklyActivity || [])
-        .map((w) => `<tr><td>${w.weekStart}</td><td style="text-align:right">${w.commits}</td></tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.heatmap && heatmapData) {
-      html += `<div class="section"><h2>File Change Heatmap</h2><div class="grid">
-        ${stat("Total Unique Files", heatmapData.totalUniqueFiles)}
-        ${stat("Most Changed Files", Math.min((heatmapData.files || []).length, 20))}
-      </div>
-      <table><thead><tr><th>File</th><th style="text-align:right">Changes</th><th style="text-align:right">Heat</th></tr></thead><tbody>
-      ${(heatmapData.files || [])
-        .slice(0, 20)
-        .map((f) => `<tr><td>${f.file}</td><td style="text-align:right">${f.changes}</td><td style="text-align:right">${f.heat}</td></tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    if (visibleMetrics.classDesign && classDesignData) {
-      html += `<div class="section"><h2>Class & Component Design</h2><div class="grid">
-        ${stat("Total Classes", classDesignData.summary.totalClasses)}
-        ${stat("Avg WMC", classDesignData.summary.averageWMC)}
-        ${stat("Avg LCOM", classDesignData.summary.averageLCOM)}
-        ${stat("Max DIT", classDesignData.summary.maxDIT)}
-        ${stat("Max NOC", classDesignData.summary.maxNOC)}
-      </div>
-      <table><thead><tr><th>Class</th><th>Language</th><th style="text-align:right">WMC</th><th style="text-align:right">LCOM</th><th style="text-align:right">DIT</th><th style="text-align:right">NOC</th></tr></thead><tbody>
-      ${(classDesignData.classes || [])
-        .slice(0, 20)
-        .map((c) => `<tr>
-          <td>${c.className}</td>
-          <td>${c.language}</td>
-          <td style="text-align:right">${c.metrics.WMC}</td>
-          <td style="text-align:right">${c.metrics.LCOM}</td>
-          <td style="text-align:right">${c.metrics.DIT}</td>
-          <td style="text-align:right">${c.metrics.NOC}</td>
-        </tr>`)
-        .join("")}
-      </tbody></table></div>`;
-    }
-
-    html += `<div class="footer">DevLens · ${repoName} · ${now()}</div></body></html>`;
-
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => {
-      win.print();
-      setBusy(false);
+    return {
+      dataURL: canvas.toDataURL("image/png"),
+      w: el.offsetWidth,
+      h: el.offsetHeight,
+      ratio: el.offsetHeight / el.offsetWidth,
     };
   }
 
+  // ─── jsPDF painter ───────────────────────────────────────────────────────────
+  function makePainter(pdf) {
+    const PW = pdf.internal.pageSize.getWidth();
+    const PH = pdf.internal.pageSize.getHeight();
+    const M = 14;
+    const CW = PW - M * 2;
+    let y = M;
+
+    const newPageIfNeeded = (needed = 8) => {
+      if (y + needed > PH - M) { pdf.addPage(); y = M; }
+    };
+    const setFont = (size, style = "normal", color = C.text) => {
+      pdf.setFontSize(size);
+      pdf.setFont("helvetica", style);
+      pdf.setTextColor(color);
+    };
+    const fillRect = (x, ry, w, h, fill) => {
+      pdf.setFillColor(fill);
+      pdf.rect(x, ry, w, h, "F");
+    };
+    const strokeRect = (x, ry, w, h, stroke) => {
+      pdf.setDrawColor(stroke);
+      pdf.setLineWidth(0.3);
+      pdf.rect(x, ry, w, h, "S");
+    };
+    const txt = (str, x, ty, opts = {}) => pdf.text(String(str ?? ""), x, ty, opts);
+
+    return {
+      pdf, M, CW, PW, PH,
+      get y() { return y; },
+      set y(v) { y = v; },
+      newPageIfNeeded, setFont, fillRect, strokeRect, txt,
+    };
+  }
+
+  function drawSectionHeader(p, title) {
+    p.newPageIfNeeded(14);
+    p.fillRect(p.M, p.y, p.CW, 9, C.surface);
+    p.strokeRect(p.M, p.y, p.CW, 9, C.border);
+    p.fillRect(p.M, p.y, 3, 9, C.accent);
+    p.setFont(8, "bold", C.accent);
+    p.txt(title.toUpperCase(), p.M + 7, p.y + 6.2);
+    p.y += 13;
+  }
+
+  function drawStatGrid(p, items) {
+    const cols = Math.min(items.length, 4);
+    const cellW = p.CW / cols;
+    const cellH = 17;
+    const rows = Math.ceil(items.length / cols);
+    p.newPageIfNeeded(rows * (cellH + 2) + 4);
+    items.forEach((item, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = p.M + col * cellW;
+      const ty = p.y + row * (cellH + 2);
+      p.fillRect(x, ty, cellW - 1, cellH, C.surface);
+      p.strokeRect(x, ty, cellW - 1, cellH, C.border);
+      p.setFont(6, "normal", C.muted);
+      p.txt(item.label, x + 3, ty + 5.5);
+      p.setFont(11, "bold", item.color || C.accent);
+      p.txt(String(item.value ?? "—"), x + 3, ty + 13.5);
+    });
+    p.y += rows * (cellH + 2) + 4;
+  }
+
+  function drawTable(p, headers, rows, colWidths) {
+    const totalW = colWidths.reduce((a, b) => a + b, 0);
+    const hdrH = 7;
+    const rowH = 6.5;
+    p.newPageIfNeeded(hdrH + rowH * 2 + 2);
+
+    p.fillRect(p.M, p.y, totalW, hdrH, C.surface);
+    p.strokeRect(p.M, p.y, totalW, hdrH, C.border);
+    let cx = p.M;
+    headers.forEach((h, i) => {
+      p.setFont(6, "bold", C.muted);
+      p.txt(h, cx + 2, p.y + 5, { maxWidth: colWidths[i] - 3 });
+      cx += colWidths[i];
+    });
+    p.y += hdrH;
+
+    rows.forEach((row, ri) => {
+      p.newPageIfNeeded(rowH + 1);
+      p.fillRect(p.M, p.y, totalW, rowH, ri % 2 === 0 ? C.rowAlt : C.bg);
+      let cx2 = p.M;
+      row.forEach((cell, ci) => {
+        const isObj = typeof cell === "object" && cell !== null;
+        const color = isObj ? (cell.color || C.text) : C.text;
+        const val = isObj ? cell.value : cell;
+        p.setFont(6, "normal", color);
+        p.txt(String(val ?? ""), cx2 + 2, p.y + 4.5, { maxWidth: colWidths[ci] - 3 });
+        cx2 += colWidths[ci];
+      });
+      p.y += rowH;
+    });
+    p.y += 5;
+  }
+
+  // Draw a chart by trying selectors in order — first non-null/non-blank wins.
+  // fallbackSelectors lets you widen the capture to a parent card if the inner
+  // element returns blank (e.g. CommitActivity renders outside normal flow).
+  async function drawChart(p, selectors, maxH = 60, waitMs = 120) {
+    const list = Array.isArray(selectors) ? selectors : [selectors];
+    let result = null;
+    for (const sel of list) {
+      result = await elementToDataURL(sel, waitMs);
+      if (result) break;
+    }
+    if (!result) {
+      console.warn("All chart selectors returned blank:", list);
+      return;
+    }
+    const imgW = p.CW;
+    const imgH = Math.min(imgW * result.ratio, maxH);
+    p.newPageIfNeeded(imgH + 6);
+    p.strokeRect(p.M, p.y, p.CW, imgH, C.border);
+    p.pdf.addImage(result.dataURL, "PNG", p.M, p.y, imgW, imgH);
+    p.y += imgH + 6;
+  }
+
+  async function drawChartPair(p, selectorLeft, selectorRight, maxH = 65) {
+    if (!selectorLeft && !selectorRight) return;
+    try {
+      const halfW = (p.CW - 4) / 2;
+      const [left, right] = await Promise.all([
+        selectorLeft ? elementToDataURL(selectorLeft) : null,
+        selectorRight ? elementToDataURL(selectorRight) : null,
+      ]);
+      const ratio = left?.ratio || right?.ratio || 1;
+      const imgH = Math.min(halfW * ratio, maxH);
+      p.newPageIfNeeded(imgH + 6);
+      if (left) {
+        p.strokeRect(p.M, p.y, halfW, imgH, C.border);
+        p.pdf.addImage(left.dataURL, "PNG", p.M, p.y, halfW, imgH);
+      }
+      if (right) {
+        p.strokeRect(p.M + halfW + 4, p.y, halfW, imgH, C.border);
+        p.pdf.addImage(right.dataURL, "PNG", p.M + halfW + 4, p.y, halfW, imgH);
+      }
+      p.y += imgH + 6;
+    } catch (err) {
+      console.warn("Chart pair skipped:", err);
+    }
+  }
+
+  // ─── PDF builder ─────────────────────────────────────────────────────────────
+  async function downloadPDF() {
+    setBusy(true);
+    setStatusMsg("Loading jsPDF…");
+    try {
+      const { jsPDF } = await import(/* @vite-ignore */ "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const p = makePainter(pdf);
+
+      // White background on every page
+      p.fillRect(0, 0, p.PW, p.PH, C.bg);
+      const origAddPage = pdf.addPage.bind(pdf);
+      pdf.addPage = (...args) => {
+        origAddPage(...args);
+        p.fillRect(0, 0, p.PW, p.PH, C.bg);
+        return pdf;
+      };
+
+      // ── Cover ──────────────────────────────────────────────────────────
+      p.fillRect(p.M, p.y, p.CW, 24, C.surface);
+      p.strokeRect(p.M, p.y, p.CW, 24, C.border);
+      p.fillRect(p.M, p.y, 4, 24, C.accent);
+      p.setFont(11, "bold", C.accent);
+      p.txt("DevLens Report", p.M + 8, p.y + 10);
+      p.setFont(12, "bold", C.text);
+      p.txt(repoName || "", p.M + 8, p.y + 18);
+      p.setFont(7, "normal", C.muted);
+      p.txt(`Generated: ${now()}`, p.PW - p.M, p.y + 18, { align: "right" });
+      p.y += 28;
+
+      // ── Lines of Code ──────────────────────────────────────────────────
+      if (visibleMetrics.loc && locData) {
+        setStatusMsg("Lines of Code…");
+        drawSectionHeader(p, "Lines of Code");
+        drawStatGrid(p, [
+          { label: "Total LOC", value: locData.summary.totalLoc?.toLocaleString(), color: C.accent },
+          { label: "Files", value: locData.summary.totalFiles, color: C.text },
+          { label: "Functions", value: locData.summary.totalFunctions, color: C.text },
+          { label: "Comments", value: locData.summary.totalComments, color: C.text },
+        ]);
+        if (locData.summary.languages?.length) {
+          p.newPageIfNeeded(7);
+          p.setFont(7, "normal", C.muted);
+          p.txt(`Languages: ${locData.summary.languages.join(", ")}`, p.M, p.y);
+          p.y += 8;
+        }
+      }
+
+      // ── Commit Summary ─────────────────────────────────────────────────
+      if (visibleMetrics.commits && commitData) {
+        setStatusMsg("Commit Summary…");
+        drawSectionHeader(p, "Commit Summary");
+        drawStatGrid(p, [
+          { label: "Total Commits", value: commitData.totalCommits, color: C.accent },
+          { label: "Total Additions", value: `+${commitData.summary.totalAdditions?.toLocaleString()}`, color: C.green },
+          { label: "Total Deletions", value: `-${commitData.summary.totalDeletions?.toLocaleString()}`, color: C.red },
+          { label: "Avg +/Commit", value: `+${commitData.summary.averageAdditionsPerCommit}`, color: C.green },
+          { label: "Avg -/Commit", value: `-${commitData.summary.averageDeletionsPerCommit}`, color: C.red },
+          { label: "Avg Files/Commit", value: commitData.summary.averageFilesChangedPerCommit, color: C.text },
+        ]);
+        setStatusMsg("Commit chart…");
+        await drawChart(p, "#chart-commits", 65);
+      }
+
+      // ── Code Ownership ─────────────────────────────────────────────────
+      if (visibleMetrics.ownership && ownershipData) {
+        setStatusMsg("Code Ownership…");
+        drawSectionHeader(p, "Code Ownership");
+        drawStatGrid(p, [
+          { label: "Contributors", value: ownershipData.totalContributors, color: C.accent },
+          { label: "Total Commits", value: ownershipData.totalCommits, color: C.text },
+        ]);
+        setStatusMsg("Ownership charts…");
+        await drawChartPair(p, "#chart-ownership-commits", "#chart-ownership-lines", 65);
+        drawTable(
+          p,
+          ["Author", "Commits", "Lines Added"],
+          ownershipData.contributors.slice(0, 15).map((c) => [
+            c.author, c.commits, c.linesAdded?.toLocaleString(),
+          ]),
+          [p.CW * 0.55, p.CW * 0.2, p.CW * 0.25]
+        );
+      }
+
+      // ── Issue Tracking ─────────────────────────────────────────────────
+      if (visibleMetrics.issues && issuesData) {
+        setStatusMsg("Issue Tracking…");
+        drawSectionHeader(p, "Issue Tracking");
+        drawStatGrid(p, [
+          { label: "Total Issues", value: issuesData.totalIssues, color: C.accent },
+          { label: "Open Issues", value: issuesData.openIssues, color: C.red },
+          { label: "Closed Issues", value: issuesData.closedIssues, color: C.green },
+        ]);
+        if (issuesData.totalIssues > 0) {
+          await drawChart(p, "#chart-issues", 60);
+        }
+      }
+
+      // ── Churn Rate ─────────────────────────────────────────────────────
+      if (visibleMetrics.churn && churnData) {
+        setStatusMsg("Churn Rate…");
+        drawSectionHeader(p, "Churn Rate");
+        drawStatGrid(p, [
+          { label: "Overall Churn", value: `${churnData.summary.churnRate}%`, color: C.accent },
+          { label: "Additions", value: `+${churnData.summary.totalAdditions?.toLocaleString()}`, color: C.green },
+          { label: "Deletions", value: `-${churnData.summary.totalDeletions?.toLocaleString()}`, color: C.red },
+          { label: "Net Lines", value: churnData.summary.netLines?.toLocaleString(), color: C.text },
+        ]);
+        drawTable(
+          p,
+          ["File", "Additions", "Deletions", "Commits", "Churn %"],
+          churnData.files.map((f) => [
+            f.file.split("/").pop(),
+            { value: `+${f.additions.toLocaleString()}`, color: C.green },
+            { value: `-${f.deletions.toLocaleString()}`, color: C.red },
+            f.commits,
+            { value: `${f.churnRate}%`, color: f.churnRate > 80 ? C.red : f.churnRate > 40 ? C.yellow : C.green },
+          ]),
+          [p.CW * 0.38, p.CW * 0.17, p.CW * 0.17, p.CW * 0.13, p.CW * 0.15]
+        );
+      }
+
+      // ── Commit Message Quality ─────────────────────────────────────────
+      if (visibleMetrics.commitMessageQuality && commitMessageQualityData) {
+        setStatusMsg("Commit Message Quality…");
+        drawSectionHeader(p, "Commit Message Quality");
+        drawStatGrid(p, [
+          { label: "Avg Quality", value: `${commitMessageQualityData.averageQuality}%`, color: C.accent },
+          { label: "Total Commits", value: commitMessageQualityData.totalCommits, color: C.text },
+          { label: "Worst Messages", value: commitMessageQualityData.worstMessages?.length || 0, color: C.red },
+        ]);
+        drawTable(
+          p,
+          ["SHA", "Message", "Quality", "Violations"],
+          (commitMessageQualityData.worstMessages || []).map((m) => [
+            m.sha.slice(0, 7),
+            (m.message || "(empty subject)").slice(0, 55),
+            { value: `${m.qualityScore}%`, color: m.qualityScore < 50 ? C.red : m.qualityScore < 75 ? C.yellow : C.green },
+            m.violationCount,
+          ]),
+          [p.CW * 0.13, p.CW * 0.57, p.CW * 0.15, p.CW * 0.15]
+        );
+      }
+
+      // ── Cyclomatic Complexity ──────────────────────────────────────────
+      if (visibleMetrics.cyclomatic && cyclomaticData) {
+        setStatusMsg("Cyclomatic Complexity…");
+        drawSectionHeader(p, "Cyclomatic Complexity");
+        drawStatGrid(p, [
+          { label: "Avg Complexity", value: cyclomaticData.averageCyclomaticComplexity, color: C.accent },
+          { label: "Functions Analyzed", value: cyclomaticData.totalFunctions, color: C.text },
+          { label: "Files Scanned", value: cyclomaticData.totalFilesAnalyzed, color: C.text },
+          { label: "High Threshold", value: `>= ${cyclomaticData.highComplexityThreshold}`, color: C.yellow },
+        ]);
+        setStatusMsg("Complexity chart…");
+        await drawChart(p, "#chart-cyclomatic", 65);
+        drawTable(
+          p,
+          ["File", "Function", "Complexity", "NLOC"],
+          (cyclomaticData.highComplexityFunctions || []).map((fn) => [
+            fn.file.split("/").pop(),
+            fn.name,
+            { value: fn.complexity, color: fn.complexity >= 20 ? C.red : fn.complexity >= 10 ? C.yellow : C.green },
+            fn.nloc,
+          ]),
+          [p.CW * 0.30, p.CW * 0.38, p.CW * 0.17, p.CW * 0.15]
+        );
+      }
+
+      // ── Commit Activity ────────────────────────────────────────────────
+      // CommitActivity may render a custom grid/canvas that needs more time to paint.
+      // We try the inner div first, then fall back to the whole metric-card.
+      if (visibleMetrics.activityGraph && commitActivityData) {
+        setStatusMsg("Activity Graph…");
+        drawSectionHeader(p, "Commit Activity Graph");
+        drawStatGrid(p, [
+          { label: "Total Commits", value: commitActivityData.totalCommits, color: C.accent },
+          { label: "Weeks", value: commitActivityData.weeks, color: C.text },
+          { label: "Avg Weekly", value: commitActivityData.insights?.averageWeeklyCommits, color: C.text },
+          { label: "Max Daily", value: commitActivityData.insights?.maxDailyCommits, color: C.text },
+        ]);
+        if (commitActivityData.dateRange?.from) {
+          p.newPageIfNeeded(7);
+          p.setFont(7, "normal", C.muted);
+          p.txt(`${commitActivityData.dateRange.from} → ${commitActivityData.dateRange.to}`, p.M, p.y);
+          p.y += 7;
+        }
+        // 400 ms wait — CommitActivity uses a custom renderer that paints after layout
+        // Fallback chain: inner div → any svg inside the card → the whole card
+        await drawChart(
+          p,
+          ["#chart-activity", "#chart-activity svg", "#chart-activity canvas"],
+          60,
+          400
+        );
+      }
+
+      // ── Naming Conventions ─────────────────────────────────────────────
+      if (visibleMetrics.namingConventions && locData?.namingQuality) {
+        setStatusMsg("Naming Conventions…");
+        drawSectionHeader(p, "Naming Conventions");
+        drawStatGrid(p, [
+          { label: "Overall Quality", value: `${Math.round(locData.namingQuality.percentage)}%`, color: C.accent },
+          { label: "Names Evaluated", value: locData.namingQuality.evaluatedNames?.toLocaleString(), color: C.text },
+          { label: "Worst Listed", value: Math.min((locData.namingQuality.worstNames || []).length, 20), color: C.red },
+        ]);
+        drawTable(
+          p,
+          ["Name", "Type", "Language", "Issue", "Score"],
+          (locData.namingQuality.worstNames || []).slice(0, 20).map((item) => [
+            item.name, item.type, item.language,
+            (item.issues || []).join(", ").slice(0, 40) || "—",
+            { value: `${item.score}%`, color: item.score < 50 ? C.red : item.score < 75 ? C.yellow : C.green },
+          ]),
+          [p.CW * 0.22, p.CW * 0.14, p.CW * 0.14, p.CW * 0.38, p.CW * 0.12]
+        );
+      }
+
+      // ── File Change Heatmap ────────────────────────────────────────────
+      if (visibleMetrics.heatmap && heatmapData) {
+        setStatusMsg("File Change Heatmap…");
+        drawSectionHeader(p, "File Change Heatmap");
+        drawStatGrid(p, [
+          { label: "Total Unique Files", value: heatmapData.totalUniqueFiles, color: C.accent },
+          { label: "Most Changed", value: Math.min((heatmapData.files || []).length, 20), color: C.text },
+        ]);
+        await drawChart(p, ["#chart-heatmap", "#chart-heatmap svg"], 75);
+        if (heatmapData.files?.length > 0) {
+          drawTable(
+            p,
+            ["File", "Changes", "Heat"],
+            (heatmapData.files || []).slice(0, 20).map((f) => [
+              f.file.split("/").pop(), f.changes,
+              { value: f.heat, color: f.heat > 0.7 ? C.red : f.heat > 0.4 ? C.yellow : C.green },
+            ]),
+            [p.CW * 0.65, p.CW * 0.2, p.CW * 0.15]
+          );
+        }
+      }
+
+      // ── Class & Component Design ───────────────────────────────────────
+      if (visibleMetrics.classDesign && classDesignData) {
+        setStatusMsg("Class & Component Design…");
+        drawSectionHeader(p, "Class & Component Design");
+        drawStatGrid(p, [
+          { label: "Total Classes", value: classDesignData.summary.totalClasses, color: C.accent },
+          { label: "Avg WMC", value: classDesignData.summary.averageWMC, color: C.text },
+          { label: "Avg LCOM", value: classDesignData.summary.averageLCOM, color: C.text },
+          { label: "Max DIT", value: classDesignData.summary.maxDIT, color: C.text },
+          { label: "Max NOC", value: classDesignData.summary.maxNOC, color: C.text },
+        ]);
+        await drawChart(p, ["#chart-classdesign", "#chart-classdesign svg"], 75);
+        if (classDesignData.classes?.length > 0) {
+          drawTable(
+            p,
+            ["Class", "Language", "WMC", "LCOM", "DIT", "NOC"],
+            (classDesignData.classes || []).slice(0, 20).map((c) => [
+              c.className, c.language, c.metrics.WMC, c.metrics.LCOM, c.metrics.DIT, c.metrics.NOC,
+            ]),
+            [p.CW * 0.40, p.CW * 0.15, p.CW * 0.11, p.CW * 0.11, p.CW * 0.11, p.CW * 0.12]
+          );
+        }
+      }
+
+      // ── Footer ─────────────────────────────────────────────────────────
+      p.setFont(7, "normal", C.muted);
+      p.txt(`DevLens · ${repoName} · ${now()}`, p.PW / 2, p.PH - 8, { align: "center" });
+
+      setStatusMsg("Saving…");
+      pdf.save(`${safeRepoName}-report.pdf`);
+      setStatusMsg("");
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      setStatusMsg(`Error: ${err.message}`);
+      setTimeout(() => setStatusMsg(""), 6000);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ─── Visibility guard ─────────────────────────────────────────────────────────
   const hasData =
     (visibleMetrics.churn && churnData) ||
     (visibleMetrics.commits && commitData) ||
@@ -459,28 +618,29 @@ export default function ReportDownload({
     (visibleMetrics.activityGraph && commitActivityData) ||
     (visibleMetrics.namingConventions && locData?.namingQuality) ||
     (visibleMetrics.classDesign && classDesignData);
+
   if (!hasData) return null;
 
   const btnBase = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "9px 18px",
-    borderRadius: 8,
-    fontSize: "0.78rem",
-    fontFamily: "var(--mono, monospace)",
-    fontWeight: 600,
-    cursor: busy ? "not-allowed" : "pointer",
-    opacity: busy ? 0.6 : 1,
-    transition: "all 0.2s",
-    border: "1px solid",
+    display: "inline-flex", alignItems: "center", gap: 8,
+    padding: "9px 18px", borderRadius: 8, fontSize: "0.78rem",
+    fontFamily: "var(--mono, monospace)", fontWeight: 600,
+    cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1,
+    transition: "all 0.2s", border: "1px solid",
   };
 
   return (
-    <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", margin: "20px 0 4px" }}>
-      <span style={{ fontSize: "0.68rem", fontFamily: "var(--mono)", color: "rgba(233,213,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+    <div
+      id="report-download-controls"
+      style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", margin: "20px 0 4px" }}
+    >
+      <span style={{
+        fontSize: "0.68rem", fontFamily: "var(--mono)",
+        color: "rgba(233,213,255,0.5)", textTransform: "uppercase", letterSpacing: "0.08em",
+      }}>
         Download Report
       </span>
+
       <button
         onClick={downloadPDF}
         disabled={busy}
@@ -488,8 +648,9 @@ export default function ReportDownload({
         onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "rgba(124,58,237,0.3)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(124,58,237,0.15)"; }}
       >
-        ⬇ PDF Report
+        {busy ? `⏳ ${statusMsg || "Generating…"}` : "⬇ PDF Report"}
       </button>
+
       <button
         onClick={downloadCSV}
         disabled={busy}
@@ -499,6 +660,12 @@ export default function ReportDownload({
       >
         ⬇ CSV Export
       </button>
+
+      {statusMsg && !busy && (
+        <span style={{ fontSize: "0.72rem", fontFamily: "var(--mono)", color: "#f87171" }}>
+          {statusMsg}
+        </span>
+      )}
     </div>
   );
 }
