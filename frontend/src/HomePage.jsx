@@ -116,14 +116,18 @@ function App() {
             {reportError && <p style={{ color: "crimson" }}>{reportError}</p>}
             {!reports.length && !reportError && <p>No saved reports yet.</p>}
             {!!reports.length && (
-              <ul>
-                {reports.map((report) => (
-                  <li key={report.id}>
-                    {report.userEmail} | {report.repository} | batch {report.batch ?? "N/A"}
-                    {report.roll ? ` / roll ${report.roll}` : ""}
-                  </li>
-                ))}
-              </ul>
+              <>
+                <p>Total reports: {reports.length}</p>
+                <ul>
+                  {reports.slice(0, 3).map((report) => (
+                    <li key={report.id}>
+                      {report.userEmail} | {report.repository} | batch {report.batch ?? "N/A"}
+                      {report.roll ? ` / roll ${report.roll}` : ""}
+                    </li>
+                  ))}
+                </ul>
+                {reports.length > 3 && <p>... and {reports.length - 3} more</p>}
+              </>
             )}
           </div>
         )}

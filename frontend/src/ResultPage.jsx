@@ -51,23 +51,30 @@ function ChatPanel({ width, onResize, commitData, locData }) {
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userMsg }]);
     setTyping(true);
-    const context = [
-      commitData && `Repository has ${commitData.totalCommits} commits. Total additions: ${commitData.summary.totalAdditions}, deletions: ${commitData.summary.totalDeletions}.`,
-      locData && `Lines of code: ${locData.summary.totalLoc}. Total files: ${locData.summary.totalFiles}. Languages: ${locData.summary.languages?.join(", ")}.`,
-    ].filter(Boolean).join(" ");
+    const context = `Repository has ${commitData?.totalCommits || 0} commits. Lines of code: ${locData?.summary?.totalLoc || 0}.`;
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_GROQ_API_KEY}`
+        },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          system: `You are a code quality assistant. Repository data: ${context}. Answer concisely.`,
-          messages: [{ role: "user", content: userMsg }],
+          model: "openai/gpt-oss-120b",
+          messages: [
+            { role: "system", content: `You are a code quality assistant. Repository data: ${context}. Provide a brief, direct answer in 2-3 sentences maximum. Be concise and focus on the question.` },
+            { role: "user", content: userMsg }
+          ],
+          temperature: 1,
+          max_completion_tokens: 1000,
+          top_p: 1,
+          reasoning_effort: "medium",
+          stream: false,
+          stop: null
         }),
       });
       const data = await response.json();
-      const reply = data.content?.[0]?.text || "Sorry, I couldn't get a response.";
+      const reply = data.choices?.[0]?.message?.content || "Sorry, I couldn't get a response.";
       setMessages((prev) => [...prev, { role: "ai", text: reply }]);
     } catch {
       setMessages((prev) => [...prev, { role: "ai", text: "Something went wrong. Please try again." }]);
@@ -163,7 +170,7 @@ export default function ResultPage() {
   const showCyclomatic = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Cyclomatic Complexity");
   const showActivityGraph = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Activity graph") || hasOption(selectedOptions, "Activity Graph");
   const showNamingConventions = (isDefault && (spl === "SPL-1" || spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Naming conventions") || hasOption(selectedOptions, "Clean code - Naming conventions");
-  const showClassDesign = (isDefault && spl === "SPL-2") || hasOption(selectedOptions, "Class and Component Design") || hasOption(selectedOptions, "WMC (Weighted Methods per Class)") || hasOption(selectedOptions, "LCOM (Lack of Cohesion of Methods)") || hasOption(selectedOptions, "DIT (Depth of Inheritance Tree)") || hasOption(selectedOptions, "NOC (Number of Children)");
+  const showClassDesign = (isDefault && (spl === "SPL-2" || spl === "SPL-3")) || hasOption(selectedOptions, "Class and Component Design") || hasOption(selectedOptions, "WMC (Weighted Methods per Class)") || hasOption(selectedOptions, "LCOM (Lack of Cohesion of Methods)") || hasOption(selectedOptions, "DIT (Depth of Inheritance Tree)") || hasOption(selectedOptions, "NOC (Number of Children)");
   const showTesting = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "Test Coverage");
   const showCiCd = (isDefault && spl === "SPL-3") || hasOption(selectedOptions, "CI/CD Evidence");
 
@@ -322,7 +329,7 @@ export default function ResultPage() {
       setMsgIndex(loadingMessages.length - 1);
       setTimeout(() => setLoading(false), 300);
     });
-  }, [selectedSource, sourceType]);
+  }, [selectedSource, sourceType, showCommits, showLOC, showCodeDuplication, showOwnership, showIssues, showChurn, showCommitMessageQuality, showCyclomatic, showActivityGraph, showNamingConventions, showHeatmap, showClassDesign, showTesting, showCiCd, spl]);
 
   const [progress, setProgress] = React.useState(0);
   const [msgIndex, setMsgIndex] = React.useState(0);
@@ -845,18 +852,11 @@ export default function ResultPage() {
           )}
           {showHeatmap && !heatmapData && featureErrors.heatmap && renderFeatureErrorCard("File Change Heatmap", featureErrors.heatmap)}
 
-          {isDefault && (
-            <>
-
-            </>
-          )}
-
-          {/* SPL-2 Specific Features */}
-          {spl === "SPL-2" && (
-            <>
-              {showClassDesign && classDesignData && (
-                <div className="metric-card">
-                  <h2>Class & Component Design</h2>
+          {showClassDesign && (
+            <div className="metric-card" id="chart-classdesign">
+              <h2>Class & Component Design</h2>
+              {classDesignData ? (
+                <>
                   <div className="stat-grid">
                     <div className="stat-item"><div className="stat-label">Total Classes</div><div className="stat-value accent">{classDesignData.summary.totalClasses}</div></div>
                     <div className="stat-item"><div className="stat-label">Avg WMC</div><div className="stat-value">{classDesignData.summary.averageWMC}</div></div>
@@ -865,8 +865,8 @@ export default function ResultPage() {
                     <div className="stat-item"><div className="stat-label">Max NOC</div><div className="stat-value">{classDesignData.summary.maxNOC}</div></div>
                   </div>
                   <div style={{ marginTop: 16 }}>
-                    <h3 style={{ fontSize: "0.9rem", marginBottom: 8, color: "var(--text-secondary)" }}>Class Details</h3>
-                    <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 4, padding: 8 }}>
+                    <h3 style={{ fontSize: "0.9rem", marginBottom: 8, color: "#F6F4E8" }}>Class Details</h3>
+                    <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid var(--border)" , color: "#F6F4E8", borderRadius: 4, padding: 8 }}>
                       <table style={{ width: "100%", fontSize: "0.75rem", fontFamily: "var(--mono)" }}>
                         <thead>
                           <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -900,9 +900,25 @@ export default function ResultPage() {
                       )}
                     </div>
                   </div>
-                </div>
+                </>
+              ) : (
+                <p style={{ color: "rgba(233,213,255,0.6)", fontFamily: "var(--mono)", textAlign: "center", padding: 20 }}>
+                  Class and Component Design analysis is not yet implemented.
+                </p>
               )}
-              {showClassDesign && !classDesignData && featureErrors.classDesign && renderFeatureErrorCard("Class & Component Design", featureErrors.classDesign)}
+            </div>
+          )}
+
+          {isDefault && (
+            <>
+
+            </>
+          )}
+
+          {/* SPL-2 Specific Features */}
+          {spl === "SPL-2" && (
+            <>
+              {/* {showClassDesign && !classDesignData && featureErrors.classDesign && renderFeatureErrorCard("Class & Component Design", featureErrors.classDesign)} */}
               {/* {!showClassDesign && <ComingSoon title="Class & Component Design" />} */}
               {/* {!showChurn && <ComingSoon title="Feature Branching & Merging" />} */}
             </>
@@ -925,6 +941,8 @@ export default function ResultPage() {
             cyclomaticData={cyclomaticData}
             commitActivityData={commitActivityData}
             classDesignData={classDesignData}
+            testingData={locData?.summary?.testingPresence}
+            ciCdData={locData?.summary?.ciCdPresence}
             visibleMetrics={{
               loc: showLOC,
               commits: showCommits,
@@ -937,6 +955,8 @@ export default function ResultPage() {
               activityGraph: showActivityGraph,
               namingConventions: showNamingConventions,
               classDesign: showClassDesign,
+              testing: showTesting,
+              ciCd: showCiCd,
             }}
           />
 
